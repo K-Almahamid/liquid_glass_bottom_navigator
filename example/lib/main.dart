@@ -225,9 +225,19 @@ class _LiquidGlassExampleAppState extends State<LiquidGlassExampleApp> {
               child: ListView(
                 shrinkWrap: true,
                 children: [
-                  Text(
-                    'Appearance',
-                    style: Theme.of(context).textTheme.titleLarge,
+                  Row(
+                    children: [
+                      IconButton(
+                        tooltip: 'Back',
+                        visualDensity: VisualDensity.compact,
+                        onPressed: () => Navigator.of(context).pop(),
+                        icon: const Icon(Icons.arrow_back_rounded),
+                      ),
+                      Text(
+                        'Appearance',
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 12),
                   SegmentedButton<ThemeMode>(

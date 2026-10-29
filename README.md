@@ -163,7 +163,16 @@ Golden files live in `test/goldens/`. They use blur sigma 0 so the images do not
 
 The bar keeps a single animation controller and a single backdrop blur. The blur is clipped to the bar and is not wrapped in its own repaint boundary, so it can sample the page behind it. The item row is the repaint boundary inside that filter. The capsule is painted by the row's render object, so indicator frames do not rebuild the items.
 
-No device frame-time capture is included with this repository. Blur cost depends on the device, the sigma, and how much of the screen the bar covers. Prefer a modest sigma. Do not stack more `BackdropFilter`s on top of this one.
+Blur cost depends on the device, the sigma, and how much of the screen the bar covers. Prefer a modest sigma. Do not stack more `BackdropFilter`s on top of this one.
+
+This repository does not include measured frame timings, and iPhone performance has not been verified. The example can record `FrameTiming` on macOS. The iOS simulator cannot build profile mode. To capture a physical iPhone, connect the device and run the same entry point only when you intend to install the example:
+
+```bash
+cd example
+flutter run --profile -d macos -t lib/profile_main.dart
+```
+
+Replace `macos` with the physical iPhone device id for that follow-up. See `example/README.md`.
 
 ## Versioning
 
