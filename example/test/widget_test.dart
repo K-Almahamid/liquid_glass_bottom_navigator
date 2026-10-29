@@ -21,4 +21,16 @@ void main() {
     );
     expect(find.byType(LiquidGlassNavigationBar), findsOneWidget);
   });
+
+  testWidgets('appearance controls close from the back arrow', (tester) async {
+    await tester.pumpWidget(const LiquidGlassExampleApp());
+    await tester.tap(find.byTooltip('Open appearance controls'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Appearance'), findsOneWidget);
+    await tester.tap(find.byTooltip('Back'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Appearance'), findsNothing);
+  });
 }
