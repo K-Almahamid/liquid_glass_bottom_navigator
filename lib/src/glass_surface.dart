@@ -5,12 +5,14 @@ import 'package:flutter/widgets.dart';
 import 'style.dart';
 import 'theme.dart';
 
-/// Frosted surface: one optional backdrop blur, a tint, a top sheen, and a
+/// Frosted surface: one optional backdrop blur, a translucent tint, and a
 /// hairline border.
 ///
-/// The blur is clipped to [borderRadius]. Sigma `0` skips [BackdropFilter].
-/// The item row sits in its own [RepaintBoundary] inside the filter, so the
-/// filter still samples the page and indicator frames stay inside that row.
+/// The blur is clipped to [borderRadius]. Sigma `0` skips [BackdropFilter]
+/// and leaves the tint. The item row sits in its own [RepaintBoundary] inside
+/// the filter, so the filter still samples the page and indicator frames stay
+/// inside that row. [BackdropFilter] softens the backdrop. It does not
+/// displace pixels the way optical refraction would.
 class GlassSurface extends StatelessWidget {
   /// Creates a glass surface around [child].
   const GlassSurface({
@@ -69,26 +71,6 @@ class GlassSurface extends StatelessWidget {
     return Stack(
       children: <Widget>[
         Positioned.fill(child: ColoredBox(color: theme.resolvedGlassTint)),
-        Positioned(
-          top: 0,
-          left: 0,
-          right: 0,
-          height: 18,
-          child: IgnorePointer(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: <Color>[
-                    theme.highlightColor,
-                    const Color(0x00000000),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
         RepaintBoundary(child: child),
         Positioned.fill(
           child: IgnorePointer(

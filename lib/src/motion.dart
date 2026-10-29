@@ -27,8 +27,8 @@ class LiquidGlassMotion {
   }) : assert(morphIntensity >= 0 && morphIntensity <= 1),
        assert(bounce <= 1);
 
-  /// Restrained spring with a slight stretch. This is the default.
-  const LiquidGlassMotion.spring() : this();
+  /// Spring whose morphing indicator stretches into a bubble. This is the default.
+  const LiquidGlassMotion.spring() : this(morphIntensity: 0.8);
 
   /// Faster spring with little stretch.
   const LiquidGlassMotion.snappy()
@@ -43,7 +43,7 @@ class LiquidGlassMotion {
     : this(
         duration: const Duration(milliseconds: 640),
         bounce: 0.1,
-        morphIntensity: 0.45,
+        morphIntensity: 1,
       );
 
   /// Snap the indicator to the selected item with no interpolation.

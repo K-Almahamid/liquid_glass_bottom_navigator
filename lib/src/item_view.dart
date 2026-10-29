@@ -172,12 +172,20 @@ class _BadgeView extends StatelessWidget {
     };
   }
 
+  Border _badgeRing() {
+    return Border.all(color: theme.glassTint.withValues(alpha: 0.9), width: 1);
+  }
+
   Widget _dot(Color background) {
     final diameter = badge.size ?? 8;
     return SizedBox.square(
       dimension: diameter,
       child: DecoratedBox(
-        decoration: BoxDecoration(color: background, shape: BoxShape.circle),
+        decoration: BoxDecoration(
+          color: background,
+          shape: BoxShape.circle,
+          border: _badgeRing(),
+        ),
       ),
     );
   }
@@ -193,6 +201,7 @@ class _BadgeView extends StatelessWidget {
         decoration: BoxDecoration(
           color: background,
           borderRadius: BorderRadius.circular(minExtent),
+          border: _badgeRing(),
         ),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 4),

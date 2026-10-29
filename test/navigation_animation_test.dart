@@ -347,4 +347,104 @@ void main() {
       closeTo(wide.debugItemRects[2].center.dx, 1),
     );
   });
+
+  testWidgets(
+    'liquid caps stay inside the row through travel, retarget, and reduced motion',
+    (tester) async {
+      const style = LiquidGlassNavigationStyle(
+        margin: EdgeInsets.zero,
+        padding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        respectSafeArea: false,
+        blurSigma: 0,
+        elevation: 0,
+      );
+      const motion = LiquidGlassMotion(
+        duration: Duration(milliseconds: 400),
+        bounce: 0,
+        morphIntensity: 1,
+      );
+
+      Future<void> show(
+        int index, {
+        TextDirection direction = TextDirection.ltr,
+        bool reduced = false,
+        LiquidGlassIndicatorStyle indicatorStyle =
+            LiquidGlassIndicatorStyle.morphingPill,
+      }) {
+        return pumpNavigationBar(
+          tester,
+          items: sampleItems(withLabels: false),
+          currentIndex: index,
+          onIndexChanged: (_) {},
+          indicatorStyle: indicatorStyle,
+          motion: motion,
+          disableAnimations: reduced,
+          textDirection: direction,
+          style: style,
+        );
+      }
+
+      await show(0);
+      _expectBubbleEnds(tester);
+
+      await show(2);
+      await tester.pump(const Duration(milliseconds: 40));
+      _expectBubbleEnds(tester);
+      await tester.pump(const Duration(milliseconds: 120));
+      _expectBubbleEnds(tester);
+      await tester.pump(const Duration(seconds: 1));
+      _expectBubbleEnds(tester);
+
+      await show(0);
+      await tester.pump(const Duration(milliseconds: 140));
+      _expectBubbleEnds(tester);
+
+      await show(2);
+      await tester.pump(const Duration(milliseconds: 50));
+      await show(1);
+      await tester.pump(const Duration(milliseconds: 40));
+      _expectBubbleEnds(tester);
+      await tester.pump(const Duration(seconds: 1));
+      _expectBubbleEnds(tester);
+
+      await show(0, reduced: true);
+      await show(2, reduced: true);
+      await tester.pump();
+      _expectBubbleEnds(tester);
+      final reduced = indicatorRender(tester);
+      expect(
+        reduced.debugIndicatorRect!.center.dx,
+        closeTo(reduced.debugItemRects[2].center.dx, 1),
+      );
+
+      await show(0, direction: TextDirection.rtl);
+      await show(2, direction: TextDirection.rtl);
+      await tester.pump(const Duration(milliseconds: 140));
+      _expectBubbleEnds(tester);
+
+      await show(0, indicatorStyle: LiquidGlassIndicatorStyle.slidingPill);
+      await show(2, indicatorStyle: LiquidGlassIndicatorStyle.slidingPill);
+      await tester.pump(const Duration(milliseconds: 80));
+      _expectBubbleEnds(tester);
+    },
+  );
+}
+
+void _expectBubbleEnds(WidgetTester tester) {
+  final render = indicatorRender(tester);
+  final rect = render.debugIndicatorRect;
+  final path = render.debugIndicatorPath;
+  expect(rect, isNotNull);
+  expect(path, isNotNull);
+  expect(rect!.left, greaterThanOrEqualTo(-0.01));
+  expect(rect.top, greaterThanOrEqualTo(-0.01));
+  expect(rect.right, lessThanOrEqualTo(render.size.width + 0.01));
+  expect(rect.bottom, lessThanOrEqualTo(render.size.height + 0.01));
+  final bounds = path!.getBounds();
+  expect(bounds.left, closeTo(rect.left, 1.5));
+  expect(bounds.right, closeTo(rect.right, 1.5));
+  expect(bounds.top, greaterThanOrEqualTo(rect.top - 0.5));
+  expect(bounds.bottom, lessThanOrEqualTo(rect.bottom + 0.5));
+  expect(path.contains(Offset(rect.left + 1, rect.center.dy)), isTrue);
+  expect(path.contains(Offset(rect.right - 1, rect.center.dy)), isTrue);
 }
