@@ -348,86 +348,115 @@ void main() {
     );
   });
 
-  testWidgets(
-    'liquid caps stay inside the row through travel, retarget, and reduced motion',
-    (tester) async {
-      const style = LiquidGlassNavigationStyle(
-        margin: EdgeInsets.zero,
-        padding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-        respectSafeArea: false,
-        blurSigma: 0,
-        elevation: 0,
+  testWidgets('Home to Inbox keeps both caps inside the row, then settles', (
+    tester,
+  ) async {
+    const style = LiquidGlassNavigationStyle(
+      margin: EdgeInsets.zero,
+      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      respectSafeArea: false,
+      blurSigma: 0,
+      elevation: 0,
+    );
+    const motion = LiquidGlassMotion(
+      duration: Duration(milliseconds: 400),
+      bounce: 0,
+      morphIntensity: 1,
+    );
+
+    Future<void> show(
+      int index, {
+      TextDirection direction = TextDirection.ltr,
+      bool reduced = false,
+      LiquidGlassIndicatorStyle indicatorStyle =
+          LiquidGlassIndicatorStyle.morphingPill,
+    }) {
+      return pumpNavigationBar(
+        tester,
+        items: sampleItems(withLabels: false),
+        currentIndex: index,
+        onIndexChanged: (_) {},
+        indicatorStyle: indicatorStyle,
+        motion: motion,
+        disableAnimations: reduced,
+        textDirection: direction,
+        style: style,
       );
-      const motion = LiquidGlassMotion(
-        duration: Duration(milliseconds: 400),
-        bounce: 0,
-        morphIntensity: 1,
-      );
+    }
 
-      Future<void> show(
-        int index, {
-        TextDirection direction = TextDirection.ltr,
-        bool reduced = false,
-        LiquidGlassIndicatorStyle indicatorStyle =
-            LiquidGlassIndicatorStyle.morphingPill,
-      }) {
-        return pumpNavigationBar(
-          tester,
-          items: sampleItems(withLabels: false),
-          currentIndex: index,
-          onIndexChanged: (_) {},
-          indicatorStyle: indicatorStyle,
-          motion: motion,
-          disableAnimations: reduced,
-          textDirection: direction,
-          style: style,
-        );
-      }
+    await show(0);
+    _expectBubbleEnds(tester);
+    final home = indicatorRender(tester).debugIndicatorRect!;
 
-      await show(0);
-      _expectBubbleEnds(tester);
+    await show(2);
+    await tester.pump(const Duration(milliseconds: 40));
+    _expectBubbleEnds(tester);
+    await tester.pump(const Duration(milliseconds: 120));
+    final towardInbox = indicatorRender(tester);
+    final moving = towardInbox.debugIndicatorRect!;
+    final inboxSlot = towardInbox.debugItemRects[2];
+    expect(moving.center.dx, greaterThan(home.center.dx + 8));
+    expect(moving.center.dx, lessThan(inboxSlot.center.dx - 4));
+    expect(moving.width, greaterThan(home.width + 8));
+    _expectBubbleEnds(tester);
+    await tester.pump(const Duration(seconds: 1));
+    final arrived = indicatorRender(tester);
+    final settled = arrived.debugIndicatorRect!;
+    expect(settled.center.dx, closeTo(arrived.debugItemRects[2].center.dx, 1));
+    expect(settled.width, closeTo(home.width, 2));
+    _expectBubbleEnds(tester);
 
-      await show(2);
-      await tester.pump(const Duration(milliseconds: 40));
-      _expectBubbleEnds(tester);
-      await tester.pump(const Duration(milliseconds: 120));
-      _expectBubbleEnds(tester);
-      await tester.pump(const Duration(seconds: 1));
-      _expectBubbleEnds(tester);
+    await show(0);
+    await tester.pump(const Duration(milliseconds: 140));
+    final returning = indicatorRender(tester).debugIndicatorRect!;
+    expect(returning.center.dx, lessThan(settled.center.dx - 8));
+    expect(returning.center.dx, greaterThan(home.center.dx + 4));
+    _expectBubbleEnds(tester);
 
-      await show(0);
-      await tester.pump(const Duration(milliseconds: 140));
-      _expectBubbleEnds(tester);
+    await show(2);
+    await tester.pump(const Duration(milliseconds: 50));
+    final beforeRetarget = indicatorRender(tester).debugIndicatorRect!;
+    await show(1);
+    await tester.pump(const Duration(milliseconds: 40));
+    final retargeted = indicatorRender(tester);
+    final retargetRect = retargeted.debugIndicatorRect!;
+    final searchSlot = retargeted.debugItemRects[1];
+    final retargetDelta = retargetRect.center.dx - beforeRetarget.center.dx;
+    final desiredDelta = searchSlot.center.dx - beforeRetarget.center.dx;
+    expect(retargetDelta * desiredDelta, greaterThan(0));
+    expect(
+      (retargetRect.center.dx - searchSlot.center.dx).abs(),
+      greaterThan(4),
+    );
+    _expectBubbleEnds(tester);
+    await tester.pump(const Duration(seconds: 1));
+    final retargetSettled = indicatorRender(tester);
+    expect(
+      retargetSettled.debugIndicatorRect!.center.dx,
+      closeTo(retargetSettled.debugItemRects[1].center.dx, 1),
+    );
+    _expectBubbleEnds(tester);
 
-      await show(2);
-      await tester.pump(const Duration(milliseconds: 50));
-      await show(1);
-      await tester.pump(const Duration(milliseconds: 40));
-      _expectBubbleEnds(tester);
-      await tester.pump(const Duration(seconds: 1));
-      _expectBubbleEnds(tester);
+    await show(0, reduced: true);
+    await show(2, reduced: true);
+    await tester.pump();
+    _expectBubbleEnds(tester);
+    final reduced = indicatorRender(tester);
+    expect(
+      reduced.debugIndicatorRect!.center.dx,
+      closeTo(reduced.debugItemRects[2].center.dx, 1),
+    );
 
-      await show(0, reduced: true);
-      await show(2, reduced: true);
-      await tester.pump();
-      _expectBubbleEnds(tester);
-      final reduced = indicatorRender(tester);
-      expect(
-        reduced.debugIndicatorRect!.center.dx,
-        closeTo(reduced.debugItemRects[2].center.dx, 1),
-      );
+    await show(0, direction: TextDirection.rtl);
+    await show(2, direction: TextDirection.rtl);
+    await tester.pump(const Duration(milliseconds: 140));
+    _expectBubbleEnds(tester);
 
-      await show(0, direction: TextDirection.rtl);
-      await show(2, direction: TextDirection.rtl);
-      await tester.pump(const Duration(milliseconds: 140));
-      _expectBubbleEnds(tester);
-
-      await show(0, indicatorStyle: LiquidGlassIndicatorStyle.slidingPill);
-      await show(2, indicatorStyle: LiquidGlassIndicatorStyle.slidingPill);
-      await tester.pump(const Duration(milliseconds: 80));
-      _expectBubbleEnds(tester);
-    },
-  );
+    await show(0, indicatorStyle: LiquidGlassIndicatorStyle.slidingPill);
+    await show(2, indicatorStyle: LiquidGlassIndicatorStyle.slidingPill);
+    await tester.pump(const Duration(milliseconds: 80));
+    _expectBubbleEnds(tester);
+  });
 }
 
 void _expectBubbleEnds(WidgetTester tester) {
