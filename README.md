@@ -108,15 +108,15 @@ Items without labels are valid in every mode. The bar height does not jump when 
 
 There is no separate item border radius. The bar radius and the indicator radius are the corner controls, so badges are not clipped by an extra item shape.
 
-`LiquidGlassNavigationTheme` holds the colors. `LiquidGlassNavigationTheme.adaptive()` follows `ThemeData.brightness` and `ColorScheme`. `LiquidGlassNavigationTheme.light` and `.dark` stay fixed. Pass any explicit theme to ignore the ambient colors. A style color set by the caller is applied after that resolution and is not replaced by the adaptive theme.
+`LiquidGlassNavigationTheme` holds the colors. `LiquidGlassNavigationTheme.adaptive()` keeps a neutral glass tint and takes the accent, indicator, and unselected foreground from `ThemeData.brightness` and `ColorScheme`. `LiquidGlassNavigationTheme.light` and `.dark` stay fixed. Pass any explicit theme to ignore the ambient colors. A style color set by the caller is applied after that resolution and is not replaced by the adaptive theme.
 
-The glass is one clipped `BackdropFilter`, a tint, a top sheen, a hairline, and one shadow. There is no second blur and no refraction shader. Blur samples the pixels behind the bar and is the expensive part. Set `blurSigma` to `0` for a flat tint when blur is too costly or unavailable. Web and older GPUs vary in how well `BackdropFilter` performs. Impeller can blur, and it is still not free.
+The glass is one clipped `BackdropFilter`, a neutral tint, a hairline, and one shadow. There is no second blur and no refraction shader. `BackdropFilter` softens the pixels behind the bar. It does not bend them. Set `blurSigma` to `0` for a flat tint when blur is too costly or unavailable. Web and older GPUs vary in how well `BackdropFilter` performs. Impeller can blur, and it is still not free.
 
 ## Motion
 
 `LiquidGlassMotion.spring()` is the default: about 480ms perceptual duration, a small bounce, and a moderate stretch. Also available: `snappy()`, `gentle()`, and `none()`.
 
-`duration` and `bounce` feed `SpringDescription.withDurationAndBounce`, which is how stiffness and damping are chosen. There is no second pair of raw stiffness knobs. `morphIntensity` (`0` to `1`) scales the stretch used by `LiquidGlassIndicatorStyle.morphingPill`. `LiquidGlassIndicatorStyle.slidingPill` slides and resizes without that stretch.
+`duration` and `bounce` feed `SpringDescription.withDurationAndBounce`, which is how stiffness and damping are chosen. There is no second pair of raw stiffness knobs. `morphIntensity` (`0` to `1`) scales the liquid stretch used by `LiquidGlassIndicatorStyle.morphingPill`. While that indicator travels, its leading end stays round and its trailing end narrows, then it settles back into a pill. `LiquidGlassIndicatorStyle.slidingPill` slides and resizes without that stretch.
 
 `respectReducedMotion` defaults to true. `MediaQueryData.disableAnimations` then skips the spring and the stretch and moves the capsule immediately. `LiquidGlassMotion.none()` does the same even when reduced motion is off.
 

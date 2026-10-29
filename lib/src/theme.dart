@@ -57,14 +57,14 @@ class LiquidGlassNavigationTheme {
   static const LiquidGlassNavigationTheme light = LiquidGlassNavigationTheme._(
     adaptive: false,
     glassTint: Color(0xFFF7F4EF),
-    glassOpacity: 0.74,
-    borderColor: Color(0xB8FFFFFF),
-    highlightColor: Color(0xE6FFFFFF),
-    shadowColor: Color(0x29161616),
-    indicatorColor: Color(0x29145E59),
-    indicatorBorderColor: Color(0x47145E59),
+    glassOpacity: 0.42,
+    borderColor: Color(0x14000000),
+    highlightColor: Color(0x5CFFFFFF),
+    shadowColor: Color(0x1A161616),
+    indicatorColor: Color(0x24145E59),
+    indicatorBorderColor: Color(0x2E145E59),
     selectedForeground: Color(0xFF145E59),
-    unselectedForeground: Color(0xB83E4A4A),
+    unselectedForeground: Color(0xC23A4444),
     badgeBackground: Color(0xFFB42318),
     badgeForeground: Color(0xFFFFFFFF),
   );
@@ -72,13 +72,13 @@ class LiquidGlassNavigationTheme {
   /// Dark glass. Independent of the ambient theme.
   static const LiquidGlassNavigationTheme dark = LiquidGlassNavigationTheme._(
     adaptive: false,
-    glassTint: Color(0xFF161A1F),
-    glassOpacity: 0.66,
-    borderColor: Color(0x29FFFFFF),
-    highlightColor: Color(0x2EFFFFFF),
-    shadowColor: Color(0x73000000),
-    indicatorColor: Color(0x2E8FE3D6),
-    indicatorBorderColor: Color(0x668FE3D6),
+    glassTint: Color(0xFF12161A),
+    glassOpacity: 0.34,
+    borderColor: Color(0x1AFFFFFF),
+    highlightColor: Color(0x24FFFFFF),
+    shadowColor: Color(0x59000000),
+    indicatorColor: Color(0x338FE3D6),
+    indicatorBorderColor: Color(0x408FE3D6),
     selectedForeground: Color(0xFFBFF6EE),
     unselectedForeground: Color(0xB3FFFFFF),
     badgeBackground: Color(0xFFFF6B5A),
@@ -133,14 +133,14 @@ class LiquidGlassNavigationTheme {
     final darkTheme = theme.brightness == Brightness.dark;
     final base = darkTheme ? dark : light;
     return base.copyWith(
-      glassTint: scheme.surface,
+      glassTint: darkTheme ? const Color(0xFF12161A) : const Color(0xFFF6F7F6),
       selectedForeground: scheme.primary,
-      indicatorColor: scheme.primary.withValues(alpha: darkTheme ? 0.28 : 0.16),
+      indicatorColor: scheme.primary.withValues(alpha: darkTheme ? 0.22 : 0.14),
       indicatorBorderColor: scheme.primary.withValues(
-        alpha: darkTheme ? 0.5 : 0.32,
+        alpha: darkTheme ? 0.36 : 0.22,
       ),
       unselectedForeground: scheme.onSurface.withValues(
-        alpha: darkTheme ? 0.72 : 0.64,
+        alpha: darkTheme ? 0.74 : 0.7,
       ),
       badgeBackground: scheme.error,
       badgeForeground: scheme.onError,

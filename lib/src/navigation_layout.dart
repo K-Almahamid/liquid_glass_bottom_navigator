@@ -164,12 +164,16 @@ class RenderLiquidNavigation extends RenderBox
   Rect? _from;
   List<Rect> _itemRects = const <Rect>[];
   Rect? _paintedIndicator;
+  Path? _paintedPath;
 
   /// Slot rectangles from the latest layout, in local coordinates.
   List<Rect> get debugItemRects => List<Rect>.unmodifiable(_itemRects);
 
   /// Capsule rectangle from the latest paint, in local coordinates.
   Rect? get debugIndicatorRect => _paintedIndicator;
+
+  /// Capsule path from the latest paint, in local coordinates.
+  Path? get debugIndicatorPath => _paintedPath;
 
   /// Selected slot.
   int? get targetIndex => _targetIndex;
@@ -504,22 +508,59 @@ class RenderLiquidNavigation extends RenderBox
     return rect;
   }
 
+  double _blobAmount() {
+    if (!_morph || _morphIntensity <= 0 || _from == null) {
+      return 0;
+    }
+    final progress = _animation.value.clamp(0.0, 1.0);
+    return math.sin(progress * math.pi) * _morphIntensity;
+  }
+
+  bool _travelRight() {
+    final from = _from;
+    final target = _rectFor(_targetIndex);
+    if (from == null || target == null) {
+      return true;
+    }
+    return target.center.dx >= from.center.dx;
+  }
+
+  double _cornerRadius(Rect rect) {
+    return math.min(
+      _indicatorRadius.topLeft.x,
+      math.min(rect.width, rect.height) / 2,
+    );
+  }
+
   Rect? _visualRect() {
     final target = _rectFor(_targetIndex);
     final from = _from;
     if (target == null) {
       return null;
     }
-    if (from == null) {
-      return target;
+    final raw = from == null
+        ? target
+        : liquidIndicatorRect(
+            from: from,
+            to: target,
+            t: _animation.value,
+            morphIntensity: _morphIntensity,
+            morph: _morph,
+          );
+    return _fitInsidePaintArea(raw);
+  }
+
+  /// Keeps the stretched bubble inside this row so the glass clip cannot
+  /// slice an end that has traveled past the item slots.
+  Rect _fitInsidePaintArea(Rect rect) {
+    if (!hasSize || size.isEmpty) {
+      return rect;
     }
-    return liquidIndicatorRect(
-      from: from,
-      to: target,
-      t: _animation.value,
-      morphIntensity: _morphIntensity,
-      morph: _morph,
-    );
+    final fitted = rect.intersect(Offset.zero & size);
+    if (fitted.width <= 0 || fitted.height <= 0) {
+      return rect;
+    }
+    return fitted;
   }
 
   @override
@@ -531,19 +572,26 @@ class RenderLiquidNavigation extends RenderBox
   void paint(PaintingContext context, Offset offset) {
     final indicator = _visualRect();
     _paintedIndicator = indicator;
+    _paintedPath = null;
     if (indicator != null) {
-      final rect = indicator.shift(offset);
-      final rrect = _indicatorRadius.toRRect(rect);
+      final radius = _cornerRadius(indicator);
+      final amount = _blobAmount();
+      final travelRight = _travelRight();
+      final local = liquidBubblePath(
+        rect: indicator,
+        cornerRadius: radius,
+        blob: amount,
+        travelRight: travelRight,
+      );
+      _paintedPath = local;
+      final bubble = local.shift(offset);
       _fill.color = _indicatorColor;
-      context.canvas.drawRRect(rrect, _fill);
+      context.canvas.drawPath(bubble, _fill);
       if (_indicatorBorderWidth > 0 && _indicatorBorderColor.a > 0) {
         _stroke
           ..color = _indicatorBorderColor
           ..strokeWidth = _indicatorBorderWidth;
-        context.canvas.drawRRect(
-          rrect.deflate(_indicatorBorderWidth / 2),
-          _stroke,
-        );
+        context.canvas.drawPath(bubble, _stroke);
       }
     }
     defaultPaint(context, offset);

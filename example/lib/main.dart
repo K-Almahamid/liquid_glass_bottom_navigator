@@ -99,11 +99,7 @@ class _LiquidGlassExampleAppState extends State<LiquidGlassExampleApp> {
                     backgroundColor: Theme.of(context).colorScheme.surface,
                     body: Stack(
                       children: [
-                        _Feed(
-                          page: page,
-                          pages: pages,
-                          bottomSpace: _height + _margin + 36,
-                        ),
+                        _Feed(page: page, pages: pages, bottomSpace: 28),
                         Positioned(
                           left: 0,
                           right: 0,
@@ -425,43 +421,85 @@ class _Feed extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return DecoratedBox(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            page.color.withValues(alpha: 0.85),
-            scheme.surface,
-            page.color.withValues(alpha: 0.35),
-          ],
-        ),
-      ),
-      child: ListView(
-        padding: EdgeInsets.fromLTRB(20, 72, 20, bottomSpace),
+      decoration: BoxDecoration(color: scheme.surface),
+      child: Stack(
         children: [
-          Text(
-            page.title,
-            key: const Key('page-title'),
-            style: Theme.of(context).textTheme.displaySmall,
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            height: 220,
+            child: _BackdropSwatches(accent: page.color),
           ),
-          const SizedBox(height: 8),
-          Text(page.caption, style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 24),
-          for (var i = 0; i < 6; i++)
-            Container(
-              margin: const EdgeInsets.only(bottom: 14),
-              padding: const EdgeInsets.all(18),
-              decoration: BoxDecoration(
-                color: scheme.surface.withValues(alpha: 0.72),
-                borderRadius: BorderRadius.circular(22),
+          ListView(
+            padding: EdgeInsets.fromLTRB(20, 72, 20, bottomSpace),
+            children: [
+              Text(
+                page.title,
+                key: const Key('page-title'),
+                style: Theme.of(context).textTheme.displaySmall,
               ),
-              child: Text(
-                '${pages[(page == pages.first ? i : i + 1) % pages.length].title} note ${i + 1}',
+              const SizedBox(height: 8),
+              Text(
+                page.caption,
                 style: Theme.of(context).textTheme.titleMedium,
               ),
-            ),
+              const SizedBox(height: 24),
+              for (var i = 0; i < 6; i++)
+                Container(
+                  margin: const EdgeInsets.only(bottom: 14),
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    color: scheme.surface.withValues(alpha: 0.72),
+                    borderRadius: BorderRadius.circular(22),
+                  ),
+                  child: Text(
+                    '${pages[(page == pages.first ? i : i + 1) % pages.length].title} note ${i + 1}',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ),
+            ],
+          ),
         ],
       ),
+    );
+  }
+}
+
+class _BackdropSwatches extends StatelessWidget {
+  const _BackdropSwatches({required this.accent});
+
+  final Color accent;
+
+  @override
+  Widget build(BuildContext context) {
+    const colors = <Color>[
+      Color(0xFFE85D4C),
+      Color(0xFFF2C14E),
+      Color(0xFF3D7EA6),
+      Color(0xFF7DCE82),
+    ];
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      children: [
+        for (final color in colors)
+          Container(
+            width: 72,
+            height: 120,
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: BorderRadius.circular(36),
+            ),
+          ),
+        Container(
+          width: 72,
+          height: 120,
+          decoration: BoxDecoration(
+            color: accent,
+            borderRadius: BorderRadius.circular(36),
+          ),
+        ),
+      ],
     );
   }
 }
