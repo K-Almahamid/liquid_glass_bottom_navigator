@@ -1,0 +1,24 @@
+name: liquid_glass_bottom_navigator
+description: A floating liquid-glass bottom navigation bar with a spring-animated selection indicator.
+version: 0.1.0
+repository: https://github.com/K-Almahamid/liquid_glass_bottom_navigator
+
+topics:
+  - navigation
+  - ui
+  - widgets
+
+environment:
+  sdk: ^3.13.4
+  flutter: ">=3.47.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
