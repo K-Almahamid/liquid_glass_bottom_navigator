@@ -473,6 +473,9 @@ class _LiquidGlassNavigationBarState extends State<LiquidGlassNavigationBar>
       width = width.clamp(minWidth, maxWidth).toDouble();
     }
 
+    final reserveLabelLine =
+        widget.labelMode != LiquidGlassLabelMode.hidden &&
+        widget.items.any(_hasLabel);
     final layoutChild = LiquidNavigationLayout(
       key: _layoutKey,
       targetIndex: _effectiveIndex,
@@ -498,6 +501,7 @@ class _LiquidGlassNavigationBarState extends State<LiquidGlassNavigationBar>
             count: widget.items.length,
             selected: i == _effectiveIndex,
             labelMode: widget.labelMode,
+            reserveLabelLine: reserveLabelLine,
             style: style,
             theme: theme,
             onTap: () => _handleTap(i),
@@ -545,4 +549,9 @@ class _LiquidGlassNavigationBarState extends State<LiquidGlassNavigationBar>
       ),
     );
   }
+}
+
+bool _hasLabel(LiquidGlassNavigationItem item) {
+  final label = item.label?.trim();
+  return label != null && label.isNotEmpty;
 }

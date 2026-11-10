@@ -116,7 +116,7 @@ A child that wins the gesture arena, such as its own button, can block the item 
 - `always` shows every label that was provided.
 - `selected` shows the selected item's label and keeps the other labels in the layout at opacity 0.
 
-Items without labels are valid in every mode. The bar height does not jump when the selection changes, because hidden labels in `selected` mode still occupy their text slot.
+Items without labels are valid in every mode. Icons share one vertical center. A label sits under that center and does not move it. When any label is showing, items without a label keep the same label line. The bar height does not jump when the selection changes.
 
 ## Layout and glass
 

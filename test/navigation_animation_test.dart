@@ -39,7 +39,8 @@ void main() {
       final forwardRest = indicatorRender(tester).debugIndicatorRect!;
       final slot = indicatorRender(tester).debugItemRects[2];
       expect(forwardRest.center.dx, closeTo(slot.center.dx, 1));
-      expect(forwardRest.width, closeTo(slot.width, 1));
+      expect(forwardRest.width, lessThan(slot.width - 8));
+      expect(forwardRest.width, greaterThan(20));
 
       index = 0;
       await show();
@@ -227,7 +228,7 @@ void main() {
 
     final rigid = await width(LiquidGlassIndicatorStyle.slidingPill);
     final slot = indicatorRender(tester).debugItemRects[2].width;
-    expect(rigid, closeTo(slot, 2));
+    expect(rigid, lessThan(slot - 8));
     final stretched = await width(LiquidGlassIndicatorStyle.morphingPill);
     expect(stretched, greaterThan(rigid + 12));
   });

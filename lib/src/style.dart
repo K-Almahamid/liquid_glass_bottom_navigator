@@ -114,10 +114,12 @@ class LiquidGlassNavigationStyle {
   /// Outer corner radius of the glass.
   final BorderRadiusGeometry borderRadius;
 
-  /// Inset of the selection capsule inside each item slot.
+  /// Outer limit of the selection capsule inside each item slot.
   ///
-  /// The indicator is aligned to the laid-out slot, then inset by this amount,
-  /// so unequal items do not share a guessed width.
+  /// The capsule hugs the selected icon, label, badge, and custom child. It
+  /// does not grow to fill the slot. This inset is the closest the capsule
+  /// may come to the slot edge, and it is ignored on an axis where it would
+  /// cut through that content.
   final EdgeInsetsGeometry indicatorInset;
 
   /// Corner radius of the selection capsule.

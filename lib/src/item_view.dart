@@ -1,10 +1,11 @@
 import 'dart:math' as math;
-import 'dart:ui' show SemanticsRole;
 
+import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 
 import 'badge.dart';
 import 'item.dart';
+import 'navigation_layout.dart';
 import 'options.dart';
 import 'style.dart';
 import 'theme.dart';
@@ -18,6 +19,7 @@ class LiquidNavigationItemView extends StatelessWidget {
     required this.count,
     required this.selected,
     required this.labelMode,
+    required this.reserveLabelLine,
     required this.style,
     required this.theme,
     required this.onTap,
@@ -39,6 +41,12 @@ class LiquidNavigationItemView extends StatelessWidget {
   /// Label visibility policy.
   final LiquidGlassLabelMode labelMode;
 
+  /// Whether every item keeps a label line under the icon.
+  ///
+  /// True when this bar can show a label. Icon-only destinations keep the
+  /// same line so their icons stay on the shared center.
+  final bool reserveLabelLine;
+
   /// Shared dimensions.
   final LiquidGlassNavigationStyle style;
 
@@ -52,9 +60,10 @@ class LiquidNavigationItemView extends StatelessWidget {
   Widget build(BuildContext context) {
     final label = item.label?.trim();
     final hasLabel = label != null && label.isNotEmpty;
-    final showLabelSlot = hasLabel && labelMode != LiquidGlassLabelMode.hidden;
     final showLabelText =
-        showLabelSlot && (labelMode == LiquidGlassLabelMode.always || selected);
+        hasLabel &&
+        labelMode != LiquidGlassLabelMode.hidden &&
+        (labelMode == LiquidGlassLabelMode.always || selected);
     final foreground =
         item.foregroundColor ??
         (selected ? theme.selectedForeground : theme.unselectedForeground);
@@ -74,9 +83,9 @@ class LiquidNavigationItemView extends StatelessWidget {
         child: ConstrainedBox(
           constraints: BoxConstraints(minHeight: style.minTouchTarget),
           child: _body(
+            context,
             foreground: foreground,
             label: label,
-            showLabelSlot: showLabelSlot,
             showLabelText: showLabelText,
           ),
         ),
@@ -84,10 +93,10 @@ class LiquidNavigationItemView extends StatelessWidget {
     );
   }
 
-  Widget _body({
+  Widget _body(
+    BuildContext context, {
     required Color foreground,
     required String? label,
-    required bool showLabelSlot,
     required bool showLabelText,
   }) {
     final Widget? visual =
@@ -95,59 +104,225 @@ class LiquidNavigationItemView extends StatelessWidget {
         (item.icon == null
             ? null
             : Icon(item.icon, size: style.iconSize, color: foreground));
+    final badge = item.badge;
+    final labelHeight = reserveLabelLine
+        ? _labelSlotHeight(context, foreground)
+        : 0.0;
     return Padding(
       padding: style.itemPadding,
       child: Column(
-        mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.center,
         children: <Widget>[
-          if (visual != null)
-            Stack(
-              clipBehavior: Clip.none,
-              alignment: Alignment.center,
+          NavigationContent(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: <Widget>[
-                visual,
-                if (item.badge != null && item.badge!.isVisible)
-                  PositionedDirectional(
-                    top: style.badgeOffset.dy,
-                    end: -style.badgeOffset.dx,
-                    child: _BadgeView(
-                      badge: item.badge!,
-                      style: style,
-                      theme: theme,
-                    ),
+                _IconBand(
+                  height: style.iconSize,
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    alignment: Alignment.center,
+                    children: <Widget>[
+                      ?visual,
+                      if (badge != null && badge.isVisible)
+                        PositionedDirectional(
+                          top: style.badgeOffset.dy,
+                          end: -style.badgeOffset.dx,
+                          child: _BadgeView(
+                            badge: badge,
+                            style: style,
+                            theme: theme,
+                          ),
+                        ),
+                    ],
                   ),
+                ),
+                if (reserveLabelLine) ...<Widget>[
+                  SizedBox(height: style.labelSpacing),
+                  SizedBox(
+                    height: labelHeight,
+                    child: label == null
+                        ? null
+                        : Opacity(
+                            opacity: showLabelText ? 1 : 0,
+                            child: Text(
+                              label,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.center,
+                              style: _labelStyle(foreground),
+                            ),
+                          ),
+                  ),
+                ],
               ],
             ),
-          if (showLabelSlot) ...<Widget>[
-            SizedBox(height: style.labelSpacing),
-            Opacity(
-              opacity: showLabelText ? 1 : 0,
-              child: Text(
-                label!,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-                style: _labelStyle(foreground),
-              ),
-            ),
-          ],
+          ),
         ],
       ),
     );
   }
 
-  TextStyle _labelStyle(Color foreground) {
+  double _labelSlotHeight(BuildContext context, Color foreground) {
+    final direction = Directionality.of(context);
+    final scaler = MediaQuery.textScalerOf(context);
+    final selectedHeight = _lineHeight(
+      _labelStyle(foreground, selected: true),
+      scaler,
+      direction,
+    );
+    final idleHeight = _lineHeight(
+      _labelStyle(foreground, selected: false),
+      scaler,
+      direction,
+    );
+    return math.max(selectedHeight, idleHeight);
+  }
+
+  double _lineHeight(
+    TextStyle style,
+    TextScaler scaler,
+    TextDirection direction,
+  ) {
+    final painter = TextPainter(
+      text: TextSpan(text: 'Ag', style: style),
+      textDirection: direction,
+      textScaler: scaler,
+      maxLines: 1,
+    )..layout();
+    final height = painter.height;
+    painter.dispose();
+    return height;
+  }
+
+  TextStyle _labelStyle(Color foreground, {bool? selected}) {
+    final isSelected = selected ?? this.selected;
     final base = TextStyle(
       fontSize: 11,
       height: 1.1,
-      fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+      fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
       color: foreground,
     );
     return base
         .merge(style.labelStyle)
-        .merge(selected ? style.selectedLabelStyle : style.unselectedLabelStyle)
+        .merge(
+          isSelected ? style.selectedLabelStyle : style.unselectedLabelStyle,
+        )
         .copyWith(color: foreground);
+  }
+}
+
+/// Fixed-height icon slot.
+///
+/// The slot width follows the visual. A taller custom child stays centered
+/// on the shared icon line and may paint outside the slot.
+class _IconBand extends SingleChildRenderObjectWidget {
+  const _IconBand({required this.height, super.child});
+
+  final double height;
+
+  @override
+  RenderIconBand createRenderObject(BuildContext context) {
+    return RenderIconBand(height: height);
+  }
+
+  @override
+  void updateRenderObject(BuildContext context, RenderIconBand renderObject) {
+    renderObject.height = height;
+  }
+}
+
+class RenderIconBand extends RenderBox
+    with RenderObjectWithChildMixin<RenderBox> {
+  RenderIconBand({required this._height});
+
+  double _height;
+
+  double get height => _height;
+
+  set height(double value) {
+    if (_height == value) {
+      return;
+    }
+    _height = value;
+    markNeedsLayout();
+  }
+
+  @override
+  void setupParentData(RenderObject child) {
+    if (child.parentData is! BoxParentData) {
+      child.parentData = BoxParentData();
+    }
+  }
+
+  @override
+  double computeMinIntrinsicWidth(double height) {
+    return child?.getMinIntrinsicWidth(double.infinity) ?? 0;
+  }
+
+  @override
+  double computeMaxIntrinsicWidth(double height) {
+    return child?.getMaxIntrinsicWidth(double.infinity) ?? 0;
+  }
+
+  @override
+  double computeMinIntrinsicHeight(double width) => _height;
+
+  @override
+  double computeMaxIntrinsicHeight(double width) => _height;
+
+  @override
+  void performLayout() {
+    final child = this.child;
+    if (child == null) {
+      size = constraints.constrain(Size(0, _height));
+      return;
+    }
+    child.layout(
+      BoxConstraints(maxWidth: constraints.maxWidth),
+      parentUsesSize: true,
+    );
+    size = constraints.constrain(Size(child.size.width, _height));
+    final parentData = child.parentData! as BoxParentData;
+    parentData.offset = Offset(0, (_height - child.size.height) / 2);
+  }
+
+  @override
+  void paint(PaintingContext context, Offset offset) {
+    final child = this.child;
+    if (child == null) {
+      return;
+    }
+    final parentData = child.parentData! as BoxParentData;
+    context.paintChild(child, offset + parentData.offset);
+  }
+
+  @override
+  void applyPaintTransform(RenderObject child, Matrix4 transform) {
+    final parentData = child.parentData! as BoxParentData;
+    transform.translateByDouble(
+      parentData.offset.dx,
+      parentData.offset.dy,
+      0,
+      1,
+    );
+  }
+
+  @override
+  bool hitTestChildren(BoxHitTestResult result, {required Offset position}) {
+    final child = this.child;
+    if (child == null) {
+      return false;
+    }
+    final parentData = child.parentData! as BoxParentData;
+    return result.addWithPaintOffset(
+      offset: parentData.offset,
+      position: position,
+      hitTest: (BoxHitTestResult result, Offset transformed) {
+        return child.hitTest(result, position: transformed);
+      },
+    );
   }
 }
 

@@ -51,7 +51,7 @@ class LiquidNavigationLayout extends MultiChildRenderObjectWidget {
   /// Maximum row height.
   final double maxHeight;
 
-  /// Inset of the capsule inside a slot.
+  /// Closest the capsule may sit to the slot edge.
   final EdgeInsets indicatorInset;
 
   /// Capsule radius.
@@ -163,6 +163,8 @@ class RenderLiquidNavigation extends RenderBox
   double _morphIntensity;
   Rect? _from;
   List<Rect> _itemRects = const <Rect>[];
+  List<Rect> _contentRects = const <Rect>[];
+  bool _contentDirty = true;
   Rect? _paintedIndicator;
   Path? _paintedPath;
   Rect? _dragRect;
@@ -416,6 +418,8 @@ class RenderLiquidNavigation extends RenderBox
       final width = boundedWidth ? incomingMaxWidth : 0.0;
       size = constraints.constrain(Size(width, minHeight.toDouble()));
       _itemRects = const <Rect>[];
+      _contentRects = const <Rect>[];
+      _contentDirty = false;
       _remapFrom(previousSize);
       return;
     }
@@ -504,6 +508,7 @@ class RenderLiquidNavigation extends RenderBox
     }
 
     _itemRects = rects;
+    _contentDirty = true;
     _remapFrom(previousSize);
   }
 
@@ -527,17 +532,134 @@ class RenderLiquidNavigation extends RenderBox
     if (index == null || index < 0 || index >= _itemRects.length) {
       return null;
     }
-    final raw = _itemRects[index];
-    final rect = Rect.fromLTRB(
-      raw.left + _indicatorInset.left,
-      raw.top + _indicatorInset.top,
-      raw.right - _indicatorInset.right,
-      raw.bottom - _indicatorInset.bottom,
+    _ensureContentRects();
+    final slot = _itemRects[index];
+    final slotLimit = _deflateForStroke(slot);
+    if (index >= _contentRects.length) {
+      return _insetLimit(slot) ?? slotLimit;
+    }
+    final content = _contentRects[index];
+    if (content.width <= 0 || content.height <= 0) {
+      return _insetLimit(slot) ?? slotLimit;
+    }
+    final hugged = Rect.fromLTRB(
+      content.left - _capsulePadX,
+      content.top - _capsulePadY,
+      content.right + _capsulePadX,
+      content.bottom + _capsulePadY,
     );
+    final ceiling = _insetLimit(slot);
+    final limit = ceiling != null && _covers(ceiling, content)
+        ? ceiling
+        : slotLimit;
+    final rect = hugged.intersect(limit);
     if (rect.width <= 0 || rect.height <= 0) {
-      return raw;
+      return slotLimit;
     }
     return rect;
+  }
+
+  /// Margin around the measured icon, label, badge, and custom child.
+  static const double _capsulePadX = 8;
+  static const double _capsulePadY = 4;
+
+  Rect _deflateForStroke(Rect slot) {
+    final pad = _indicatorBorderWidth > 0 ? _indicatorBorderWidth / 2 : 0.0;
+    final rect = slot.deflate(pad);
+    if (rect.width <= 0 || rect.height <= 0) {
+      return slot;
+    }
+    return rect;
+  }
+
+  /// Slot reduced by [indicatorInset], or null when that inset removes the slot.
+  Rect? _insetLimit(Rect slot) {
+    final stroke = _indicatorBorderWidth > 0 ? _indicatorBorderWidth / 2 : 0.0;
+    final rect = Rect.fromLTRB(
+      slot.left + math.max(_indicatorInset.left, stroke),
+      slot.top + math.max(_indicatorInset.top, stroke),
+      slot.right - math.max(_indicatorInset.right, stroke),
+      slot.bottom - math.max(_indicatorInset.bottom, stroke),
+    );
+    if (rect.width <= 0 || rect.height <= 0) {
+      return null;
+    }
+    return rect;
+  }
+
+  bool _covers(Rect limit, Rect content) {
+    return limit.width + 0.01 >= content.width &&
+        limit.height + 0.01 >= content.height;
+  }
+
+  void _ensureContentRects() {
+    if (!_contentDirty) {
+      return;
+    }
+    final children = _children;
+    _contentRects = <Rect>[for (final child in children) _contentInRow(child)];
+    _contentDirty = false;
+  }
+
+  Rect _contentInRow(RenderBox slotChild) {
+    final content = _findContent(slotChild);
+    if (content == null || !content.hasSize) {
+      final parentData = slotChild.parentData! as _NavParentData;
+      return parentData.offset & slotChild.size;
+    }
+    final origin = _offsetWithin(this, content);
+    return _paintBounds(content).shift(origin);
+  }
+
+  RenderNavigationContent? _findContent(RenderObject node) {
+    if (node is RenderNavigationContent) {
+      return node;
+    }
+    RenderNavigationContent? found;
+    node.visitChildren((RenderObject child) {
+      if (found != null) {
+        return;
+      }
+      found = _findContent(child);
+    });
+    return found;
+  }
+
+  Rect _paintBounds(RenderBox root) {
+    var bounds = Offset.zero & root.size;
+    void visit(RenderBox box) {
+      if (box != root &&
+          box.hasSize &&
+          box.size.width > 0 &&
+          box.size.height > 0) {
+        bounds = bounds.expandToInclude(_offsetWithin(root, box) & box.size);
+      }
+      box.visitChildren((RenderObject child) {
+        if (child is RenderBox) {
+          visit(child);
+        }
+      });
+    }
+
+    visit(root);
+    return bounds;
+  }
+
+  Offset _offsetWithin(RenderBox ancestor, RenderBox box) {
+    var offset = Offset.zero;
+    RenderBox? current = box;
+    while (current != null && current != ancestor) {
+      final parentData = current.parentData;
+      if (parentData is BoxParentData) {
+        offset += parentData.offset;
+      }
+      final parent = current.parent;
+      if (parent is! RenderBox) {
+        break;
+      }
+      current = parent;
+    }
+    return offset;
   }
 
   double _blobAmount() {
@@ -650,3 +772,20 @@ class RenderLiquidNavigation extends RenderBox
     defaultPaint(context, offset);
   }
 }
+
+/// Icon, label, and badge cluster measured for the selection capsule.
+///
+/// The cluster is centered in the slot. Its size does not include the free
+/// space around it, so the capsule can hug the content.
+class NavigationContent extends SingleChildRenderObjectWidget {
+  /// Creates a measurable content cluster.
+  const NavigationContent({super.key, super.child});
+
+  @override
+  RenderNavigationContent createRenderObject(BuildContext context) {
+    return RenderNavigationContent();
+  }
+}
+
+/// Render object for [NavigationContent].
+class RenderNavigationContent extends RenderProxyBox {}
