@@ -2,7 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:liquid_glass_bottom_navigator/liquid_glass_bottom_navigator.dart';
 
+import 'tolerant_golden_comparator.dart';
+
 void main() {
+  goldenFileComparator = TolerantGoldenFileComparator(
+    Uri.parse('test/navigation_golden_test.dart'),
+    // Ubuntu CI and macOS hosts differ slightly in glyph rasterization.
+    precisionTolerance: 0.02,
+  );
+
   testWidgets('light glass bar', (tester) async {
     await _pumpGolden(
       tester,

@@ -35,7 +35,7 @@ From `example/`:
 flutter test
 ```
 
-Widget tests drive real pointer gestures. Do not loosen an assertion to make a drag test pass. Do not regenerate goldens to hide a paint change. Goldens use `blurSigma: 0`. `test/flutter_test_config.dart` allows up to 2% pixel variance so Ubuntu CI and local hosts can share the same PNGs; real layout regressions are still much larger than that.
+Widget tests drive real pointer gestures. Do not loosen an assertion to make a drag test pass. Do not regenerate goldens to hide a paint change. Goldens use `blurSigma: 0`. `test/navigation_golden_test.dart` allows up to 2% pixel variance so Ubuntu CI and local hosts can share the same PNGs; real layout regressions are still much larger than that.
 
 ## Coding guidelines
 
