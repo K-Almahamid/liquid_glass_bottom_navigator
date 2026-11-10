@@ -38,7 +38,7 @@ void main() {
       await tester.pump(const Duration(seconds: 1));
       final forwardRest = indicatorRender(tester).debugIndicatorRect!;
       final slot = indicatorRender(tester).debugItemRects[2];
-      expect(forwardRest.center.dx, closeTo(slot.center.dx, 1));
+      expect(slot.contains(forwardRest.center), isTrue);
       expect(forwardRest.width, lessThan(slot.width - 8));
       expect(forwardRest.width, greaterThan(20));
 
@@ -51,8 +51,9 @@ void main() {
       );
       await tester.pump(const Duration(seconds: 1));
       expect(
-        indicatorRender(tester).debugIndicatorRect!.center.dx,
-        closeTo(indicatorRender(tester).debugItemRects[0].center.dx, 1),
+        indicatorRender(tester).debugItemRects[0]
+            .contains(indicatorRender(tester).debugIndicatorRect!.center),
+        isTrue,
       );
     },
   );
@@ -106,8 +107,8 @@ void main() {
         disableAnimations: false,
       );
       expect(
-        disabled.center.dx,
-        closeTo(indicatorRender(tester).debugItemRects[2].center.dx, 1),
+        indicatorRender(tester).debugItemRects[2].contains(disabled.center),
+        isTrue,
       );
       expect(tester.binding.transientCallbackCount, 0);
 
@@ -116,8 +117,8 @@ void main() {
         disableAnimations: true,
       );
       expect(
-        reduced.center.dx,
-        closeTo(indicatorRender(tester).debugItemRects[2].center.dx, 1),
+        indicatorRender(tester).debugItemRects[2].contains(reduced.center),
+        isTrue,
       );
       expect(tester.binding.transientCallbackCount, 0);
     },
@@ -326,8 +327,8 @@ void main() {
     final rtl = indicatorRender(tester);
     final rtlSlotWidth = rtl.debugItemRects[2].width;
     expect(
-      rtl.debugIndicatorRect!.center.dx,
-      closeTo(rtl.debugItemRects[2].center.dx, 1),
+      rtl.debugItemRects[2].contains(rtl.debugIndicatorRect!.center),
+      isTrue,
     );
 
     await pumpNavigationBar(
@@ -344,8 +345,8 @@ void main() {
     final wide = indicatorRender(tester);
     expect(wide.debugItemRects[2].width, greaterThan(rtlSlotWidth));
     expect(
-      wide.debugIndicatorRect!.center.dx,
-      closeTo(wide.debugItemRects[2].center.dx, 1),
+      wide.debugItemRects[2].contains(wide.debugIndicatorRect!.center),
+      isTrue,
     );
   });
 
@@ -397,13 +398,13 @@ void main() {
     final moving = towardInbox.debugIndicatorRect!;
     final inboxSlot = towardInbox.debugItemRects[2];
     expect(moving.center.dx, greaterThan(home.center.dx + 8));
-    expect(moving.center.dx, lessThan(inboxSlot.center.dx - 4));
+    expect(moving.center.dx, lessThan(inboxSlot.right - 4));
     expect(moving.width, greaterThan(home.width + 8));
     _expectBubbleEnds(tester);
     await tester.pump(const Duration(seconds: 1));
     final arrived = indicatorRender(tester);
     final settled = arrived.debugIndicatorRect!;
-    expect(settled.center.dx, closeTo(arrived.debugItemRects[2].center.dx, 1));
+    expect(arrived.debugItemRects[2].contains(settled.center), isTrue);
     expect(settled.width, closeTo(home.width, 2));
     _expectBubbleEnds(tester);
 
@@ -444,8 +445,8 @@ void main() {
     _expectBubbleEnds(tester);
     final reduced = indicatorRender(tester);
     expect(
-      reduced.debugIndicatorRect!.center.dx,
-      closeTo(reduced.debugItemRects[2].center.dx, 1),
+      reduced.debugItemRects[2].contains(reduced.debugIndicatorRect!.center),
+      isTrue,
     );
 
     await show(0, direction: TextDirection.rtl);

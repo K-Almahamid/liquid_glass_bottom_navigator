@@ -171,7 +171,11 @@ void main() {
     await tester.pumpAndSettle();
     expect(selections, isEmpty);
     expect(haptics, isEmpty);
-    expect(_center(tester).dx, closeTo(_slot(tester, 2).dx, 1));
+    expect(
+      indicatorRender(tester).debugItemRects[2]
+          .contains(indicatorRender(tester).debugIndicatorRect!.center),
+      isTrue,
+    );
   });
 
   testWidgets('rapid drags each report one index', (tester) async {
@@ -195,7 +199,11 @@ void main() {
     await tester.pumpAndSettle();
     expect(selections, isEmpty);
     expect(indicatorRender(tester).debugItemRects, hasLength(1));
-    expect(_center(tester).dx, closeTo(_slot(tester, 0).dx, 1));
+    expect(
+      indicatorRender(tester).debugItemRects[0]
+          .contains(indicatorRender(tester).debugIndicatorRect!.center),
+      isTrue,
+    );
   });
 
   testWidgets('disposing during a drag does not throw', (tester) async {
@@ -368,7 +376,11 @@ void main() {
     await gesture.up();
     await tester.pumpAndSettle();
     expect(selections, isEmpty);
-    expect(_center(tester).dx, closeTo(_slot(tester, 0).dx, 1));
+    expect(
+      indicatorRender(tester).debugItemRects[0]
+          .contains(indicatorRender(tester).debugIndicatorRect!.center),
+      isTrue,
+    );
     expect(_slot(tester, 0).dx, greaterThan(_slot(tester, 1).dx));
   });
 

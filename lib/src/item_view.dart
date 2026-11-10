@@ -108,60 +108,74 @@ class LiquidNavigationItemView extends StatelessWidget {
     final labelHeight = reserveLabelLine
         ? _labelSlotHeight(context, foreground)
         : 0.0;
-    return Padding(
-      padding: style.itemPadding,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: <Widget>[
-          NavigationContent(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: <Widget>[
-                _IconBand(
-                  height: style.iconSize,
-                  child: Stack(
-                    clipBehavior: Clip.none,
-                    alignment: Alignment.center,
-                    children: <Widget>[
-                      ?visual,
-                      if (badge != null && badge.isVisible)
-                        PositionedDirectional(
-                          top: style.badgeOffset.dy,
-                          end: -style.badgeOffset.dx,
-                          child: _BadgeView(
-                            badge: badge,
-                            style: style,
-                            theme: theme,
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-                if (reserveLabelLine) ...<Widget>[
-                  SizedBox(height: style.labelSpacing),
-                  SizedBox(
-                    height: labelHeight,
-                    child: label == null
-                        ? null
-                        : Opacity(
-                            opacity: showLabelText ? 1 : 0,
-                            child: Text(
-                              label,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              textAlign: TextAlign.center,
-                              style: _labelStyle(foreground),
-                            ),
-                          ),
-                  ),
+    final direction = Directionality.of(context);
+    return _ClusterFrame(
+      anchor: _anchor,
+      barPadding: style.padding.resolve(direction),
+      itemPadding: style.itemPadding.resolve(direction),
+      breath: liquidCapsuleBreath(style.indicatorInset.resolve(direction)),
+      textDirection: direction,
+      child: NavigationContent(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: <Widget>[
+            _IconBand(
+              height: style.iconSize,
+              child: Stack(
+                clipBehavior: Clip.none,
+                alignment: Alignment.center,
+                children: <Widget>[
+                  ?visual,
+                  if (badge != null && badge.isVisible)
+                    PositionedDirectional(
+                      top: style.badgeOffset.dy,
+                      end: -style.badgeOffset.dx,
+                      child: _BadgeView(
+                        badge: badge,
+                        style: style,
+                        theme: theme,
+                      ),
+                    ),
                 ],
-              ],
+              ),
             ),
-          ),
-        ],
+            if (reserveLabelLine) ...<Widget>[
+              SizedBox(height: style.labelSpacing),
+              SizedBox(
+                height: labelHeight,
+                child: label == null
+                    ? null
+                    : Opacity(
+                        opacity: showLabelText ? 1 : 0,
+                        child: Text(
+                          label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.center,
+                          style: _labelStyle(foreground),
+                        ),
+                      ),
+              ),
+            ],
+          ],
+        ),
       ),
     );
+  }
+
+  /// A lone destination stays centered. Ends sit on the outer glass inset.
+  _SlotAnchor get _anchor {
+    if (count <= 1) {
+      return _SlotAnchor.center;
+    }
+    if (index == 0) {
+      return _SlotAnchor.start;
+    }
+    if (index == count - 1) {
+      return _SlotAnchor.end;
+    }
+    return _SlotAnchor.center;
   }
 
   double _labelSlotHeight(BuildContext context, Color foreground) {
@@ -210,6 +224,263 @@ class LiquidNavigationItemView extends StatelessWidget {
           isSelected ? style.selectedLabelStyle : style.unselectedLabelStyle,
         )
         .copyWith(color: foreground);
+  }
+}
+
+/// Where a destination sits inside its slot.
+enum _SlotAnchor { start, center, end }
+
+/// Places the icon and label cluster.
+///
+/// Every destination uses the same vertical center, so a label cannot move
+/// the icon. The first and last destinations sit in from the glass by the
+/// same amount as the capsule's top and bottom gaps. Middle destinations
+/// stay centered in their slots.
+class _ClusterFrame extends SingleChildRenderObjectWidget {
+  const _ClusterFrame({
+    required this.anchor,
+    required this.barPadding,
+    required this.itemPadding,
+    required this.breath,
+    required this.textDirection,
+    super.child,
+  });
+
+  final _SlotAnchor anchor;
+  final EdgeInsets barPadding;
+  final EdgeInsets itemPadding;
+  final double breath;
+  final TextDirection textDirection;
+
+  @override
+  _RenderClusterFrame createRenderObject(BuildContext context) {
+    return _RenderClusterFrame(
+      anchor: anchor,
+      barPadding: barPadding,
+      itemPadding: itemPadding,
+      breath: breath,
+      textDirection: textDirection,
+    );
+  }
+
+  @override
+  void updateRenderObject(
+    BuildContext context,
+    _RenderClusterFrame renderObject,
+  ) {
+    renderObject
+      ..anchor = anchor
+      ..barPadding = barPadding
+      ..itemPadding = itemPadding
+      ..breath = breath
+      ..textDirection = textDirection;
+  }
+}
+
+class _RenderClusterFrame extends RenderBox
+    with RenderObjectWithChildMixin<RenderBox> {
+  _RenderClusterFrame({
+    required this._anchor,
+    required this._barPadding,
+    required this._itemPadding,
+    required this._breath,
+    required this._textDirection,
+  });
+
+  _SlotAnchor _anchor;
+  EdgeInsets _barPadding;
+  EdgeInsets _itemPadding;
+  double _breath;
+  TextDirection _textDirection;
+
+  set anchor(_SlotAnchor value) {
+    if (_anchor == value) {
+      return;
+    }
+    _anchor = value;
+    markNeedsLayout();
+  }
+
+  set barPadding(EdgeInsets value) {
+    if (_barPadding == value) {
+      return;
+    }
+    _barPadding = value;
+    markNeedsLayout();
+  }
+
+  set itemPadding(EdgeInsets value) {
+    if (_itemPadding == value) {
+      return;
+    }
+    _itemPadding = value;
+    markNeedsLayout();
+  }
+
+  set breath(double value) {
+    if (_breath == value) {
+      return;
+    }
+    _breath = value;
+    markNeedsLayout();
+  }
+
+  set textDirection(TextDirection value) {
+    if (_textDirection == value) {
+      return;
+    }
+    _textDirection = value;
+    markNeedsLayout();
+  }
+
+  @override
+  void setupParentData(RenderObject child) {
+    if (child.parentData is! BoxParentData) {
+      child.parentData = BoxParentData();
+    }
+  }
+
+  @override
+  double computeMinIntrinsicWidth(double height) {
+    final child = this.child;
+    if (child == null) {
+      return _itemPadding.horizontal;
+    }
+    return child.getMinIntrinsicWidth(height) + _itemPadding.horizontal;
+  }
+
+  @override
+  double computeMaxIntrinsicWidth(double height) {
+    final child = this.child;
+    if (child == null) {
+      return _itemPadding.horizontal;
+    }
+    return child.getMaxIntrinsicWidth(height) + _itemPadding.horizontal;
+  }
+
+  @override
+  double computeMinIntrinsicHeight(double width) {
+    final child = this.child;
+    if (child == null) {
+      return 0;
+    }
+    return child.getMinIntrinsicHeight(
+      math.max(0, width - _itemPadding.horizontal),
+    );
+  }
+
+  @override
+  double computeMaxIntrinsicHeight(double width) {
+    final child = this.child;
+    if (child == null) {
+      return 0;
+    }
+    return child.getMaxIntrinsicHeight(
+      math.max(0, width - _itemPadding.horizontal),
+    );
+  }
+
+  @override
+  void performLayout() {
+    final child = this.child;
+    final maxWidth = constraints.maxWidth.isFinite ? constraints.maxWidth : 0.0;
+    if (child == null) {
+      size = constraints.constrain(Size(maxWidth, constraints.minHeight));
+      return;
+    }
+    final innerWidth = constraints.maxWidth.isFinite
+        ? math.max(0.0, constraints.maxWidth - _itemPadding.horizontal)
+        : double.infinity;
+    child.layout(BoxConstraints(maxWidth: innerWidth), parentUsesSize: true);
+    final width = constraints.maxWidth.isFinite
+        ? constraints.maxWidth
+        : child.size.width + _itemPadding.horizontal;
+    final height = constraints.hasTightHeight
+        ? constraints.maxHeight
+        : math.max(constraints.minHeight, child.size.height);
+    size = constraints.constrain(Size(width, height));
+
+    final glassHeight = size.height + _barPadding.vertical;
+    final room = (glassHeight - child.size.height) / 2;
+    final breath = room <= 0 ? 0.0 : math.min(_breath, room);
+    final dy =
+        (size.height - child.size.height) / 2 +
+        (_barPadding.bottom - _barPadding.top) / 2;
+    final dx = _dx(child.size.width, child.size.height, breath);
+    final parentData = child.parentData! as BoxParentData;
+    parentData.offset = Offset(dx, dy);
+  }
+
+  /// Horizontal origin of the cluster inside this slot.
+  ///
+  /// End destinations are shifted so the capsule's outer edge matches its
+  /// top and bottom gaps. A slot that cannot hold that inset keeps the
+  /// cluster inside the slot instead.
+  double _dx(double childWidth, double childHeight, double breath) {
+    if (childWidth + breath * 2 > size.width) {
+      return math.max(0.0, (size.width - childWidth) / 2);
+    }
+    final glassHeight = size.height + _barPadding.vertical;
+    final side = (glassHeight - childHeight) / 2;
+    final double dx;
+    switch (_anchor) {
+      case _SlotAnchor.center:
+        dx = (size.width - childWidth) / 2;
+      case _SlotAnchor.start:
+        dx = _textDirection == TextDirection.ltr
+            ? -_barPadding.left + side
+            : size.width + _barPadding.right - side - childWidth;
+      case _SlotAnchor.end:
+        dx = _textDirection == TextDirection.ltr
+            ? size.width + _barPadding.right - side - childWidth
+            : -_barPadding.left + side;
+    }
+    final minDx = breath;
+    final maxDx = size.width - childWidth - breath;
+    if (dx < minDx) {
+      return minDx;
+    }
+    if (dx > maxDx) {
+      return maxDx;
+    }
+    return dx;
+  }
+
+  @override
+  void paint(PaintingContext context, Offset offset) {
+    final child = this.child;
+    if (child == null) {
+      return;
+    }
+    final parentData = child.parentData! as BoxParentData;
+    context.paintChild(child, offset + parentData.offset);
+  }
+
+  @override
+  void applyPaintTransform(RenderBox child, Matrix4 transform) {
+    final parentData = child.parentData! as BoxParentData;
+    transform.translateByDouble(
+      parentData.offset.dx,
+      parentData.offset.dy,
+      0,
+      1,
+    );
+  }
+
+  @override
+  bool hitTestChildren(BoxHitTestResult result, {required Offset position}) {
+    final child = this.child;
+    if (child == null) {
+      return false;
+    }
+    final parentData = child.parentData! as BoxParentData;
+    return result.addWithPaintOffset(
+      offset: parentData.offset,
+      position: position,
+      hitTest: (BoxHitTestResult result, Offset transformed) {
+        return child.hitTest(result, position: transformed);
+      },
+    );
   }
 }
 

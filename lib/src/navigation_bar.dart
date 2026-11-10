@@ -485,6 +485,7 @@ class _LiquidGlassNavigationBarState extends State<LiquidGlassNavigationBar>
       itemSpacing: style.itemSpacing,
       minHeight: bounds.min,
       maxHeight: bounds.max,
+      barPadding: padding,
       indicatorInset: style.indicatorInset.resolve(direction),
       indicatorRadius: style.indicatorRadius.resolve(direction),
       indicatorColor: theme.indicatorColor,

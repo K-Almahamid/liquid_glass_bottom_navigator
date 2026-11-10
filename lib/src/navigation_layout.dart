@@ -19,6 +19,7 @@ class LiquidNavigationLayout extends MultiChildRenderObjectWidget {
     required this.itemSpacing,
     required this.minHeight,
     required this.maxHeight,
+    required this.barPadding,
     required this.indicatorInset,
     required this.indicatorRadius,
     required this.indicatorColor,
@@ -51,7 +52,13 @@ class LiquidNavigationLayout extends MultiChildRenderObjectWidget {
   /// Maximum row height.
   final double maxHeight;
 
-  /// Closest the capsule may sit to the slot edge.
+  /// Resolved glass padding around this row.
+  ///
+  /// The capsule's top, bottom, and outer-end gaps are measured from the
+  /// glass, so the row needs the padding that sits outside it.
+  final EdgeInsets barPadding;
+
+  /// Even breathing room around the selected content. The smallest side is used.
   final EdgeInsets indicatorInset;
 
   /// Capsule radius.
@@ -82,6 +89,7 @@ class LiquidNavigationLayout extends MultiChildRenderObjectWidget {
       itemSpacing: itemSpacing,
       minHeight: minHeight,
       maxHeight: maxHeight,
+      barPadding: barPadding,
       indicatorInset: indicatorInset,
       indicatorRadius: indicatorRadius,
       indicatorColor: indicatorColor,
@@ -105,6 +113,7 @@ class LiquidNavigationLayout extends MultiChildRenderObjectWidget {
       ..itemSpacing = itemSpacing
       ..minHeight = minHeight
       ..maxHeight = maxHeight
+      ..barPadding = barPadding
       ..indicatorInset = indicatorInset
       ..indicatorRadius = indicatorRadius
       ..indicatorColor = indicatorColor
@@ -131,6 +140,7 @@ class RenderLiquidNavigation extends RenderBox
     required this._itemSpacing,
     required this._minHeight,
     required this._maxHeight,
+    required this._barPadding,
     required this._indicatorInset,
     required this._indicatorRadius,
     required this._indicatorColor,
@@ -154,6 +164,7 @@ class RenderLiquidNavigation extends RenderBox
   double _itemSpacing;
   double _minHeight;
   double _maxHeight;
+  EdgeInsets _barPadding;
   EdgeInsets _indicatorInset;
   BorderRadius _indicatorRadius;
   Color _indicatorColor;
@@ -257,6 +268,15 @@ class RenderLiquidNavigation extends RenderBox
       return;
     }
     _maxHeight = value;
+    markNeedsLayout();
+  }
+
+  /// Glass padding outside this row.
+  set barPadding(EdgeInsets value) {
+    if (_barPadding == value) {
+      return;
+    }
+    _barPadding = value;
     markNeedsLayout();
   }
 
@@ -536,32 +556,35 @@ class RenderLiquidNavigation extends RenderBox
     final slot = _itemRects[index];
     final slotLimit = _deflateForStroke(slot);
     if (index >= _contentRects.length) {
-      return _insetLimit(slot) ?? slotLimit;
+      return slotLimit;
     }
     final content = _contentRects[index];
     if (content.width <= 0 || content.height <= 0) {
-      return _insetLimit(slot) ?? slotLimit;
+      return slotLimit;
     }
-    final hugged = Rect.fromLTRB(
-      content.left - _capsulePadX,
-      content.top - _capsulePadY,
-      content.right + _capsulePadX,
-      content.bottom + _capsulePadY,
-    );
-    final ceiling = _insetLimit(slot);
-    final limit = ceiling != null && _covers(ceiling, content)
-        ? ceiling
-        : slotLimit;
-    final rect = hugged.intersect(limit);
+    // One margin on every side of the content. End items are already placed
+    // so this margin leaves the same gap to the glass above, below, and on
+    // the outer side. A short glass reduces the margin instead of clipping.
+    final breath = _breathFor(content);
+    final hugged = content.inflate(breath);
+    final rect = hugged.intersect(slotLimit);
     if (rect.width <= 0 || rect.height <= 0) {
       return slotLimit;
     }
     return rect;
   }
 
-  /// Margin around the measured icon, label, badge, and custom child.
-  static const double _capsulePadX = 8;
-  static const double _capsulePadY = 4;
+  /// Smallest [indicatorInset] side. Asymmetric insets stay even.
+  double get _preferredBreath => liquidCapsuleBreath(_indicatorInset);
+
+  double _breathFor(Rect content) {
+    final glassHeight = size.height + _barPadding.vertical;
+    final room = (glassHeight - content.height) / 2;
+    if (room <= 0) {
+      return 0;
+    }
+    return math.min(_preferredBreath, room);
+  }
 
   Rect _deflateForStroke(Rect slot) {
     final pad = _indicatorBorderWidth > 0 ? _indicatorBorderWidth / 2 : 0.0;
@@ -570,26 +593,6 @@ class RenderLiquidNavigation extends RenderBox
       return slot;
     }
     return rect;
-  }
-
-  /// Slot reduced by [indicatorInset], or null when that inset removes the slot.
-  Rect? _insetLimit(Rect slot) {
-    final stroke = _indicatorBorderWidth > 0 ? _indicatorBorderWidth / 2 : 0.0;
-    final rect = Rect.fromLTRB(
-      slot.left + math.max(_indicatorInset.left, stroke),
-      slot.top + math.max(_indicatorInset.top, stroke),
-      slot.right - math.max(_indicatorInset.right, stroke),
-      slot.bottom - math.max(_indicatorInset.bottom, stroke),
-    );
-    if (rect.width <= 0 || rect.height <= 0) {
-      return null;
-    }
-    return rect;
-  }
-
-  bool _covers(Rect limit, Rect content) {
-    return limit.width + 0.01 >= content.width &&
-        limit.height + 0.01 >= content.height;
   }
 
   void _ensureContentRects() {
@@ -773,10 +776,21 @@ class RenderLiquidNavigation extends RenderBox
   }
 }
 
+/// Smallest side of [inset], so the capsule margin stays the same on every side.
+double liquidCapsuleBreath(EdgeInsets inset) {
+  return math.max(
+    0.0,
+    math.min(
+      math.min(inset.left, inset.right),
+      math.min(inset.top, inset.bottom),
+    ),
+  );
+}
+
 /// Icon, label, and badge cluster measured for the selection capsule.
 ///
-/// The cluster is centered in the slot. Its size does not include the free
-/// space around it, so the capsule can hug the content.
+/// Middle clusters are centered in the slot. End clusters sit on the shared
+/// glass inset. The size does not include the free space around the cluster.
 class NavigationContent extends SingleChildRenderObjectWidget {
   /// Creates a measurable content cluster.
   const NavigationContent({super.key, super.child});

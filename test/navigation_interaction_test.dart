@@ -174,10 +174,7 @@ void main() {
 
       final render = indicatorRender(tester);
       final destination = render.debugItemRects[2];
-      expect(
-        render.debugIndicatorRect!.center.dx,
-        closeTo(destination.center.dx, 1),
-      );
+      expect(destination.contains(render.debugIndicatorRect!.center), isTrue);
       expect(tester.binding.transientCallbackCount, 0);
     },
   );

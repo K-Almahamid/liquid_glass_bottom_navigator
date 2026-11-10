@@ -28,7 +28,7 @@ class LiquidGlassNavigationStyle {
     this.maxHeight,
     this.expandForTextScale = true,
     this.margin = const EdgeInsets.fromLTRB(16, 0, 16, 12),
-    this.padding = const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+    this.padding = const EdgeInsets.all(6),
     this.itemSpacing = 0,
     this.itemPadding = const EdgeInsets.symmetric(horizontal: 2),
     this.itemLayout = LiquidGlassItemLayout.equal,
@@ -100,6 +100,10 @@ class LiquidGlassNavigationStyle {
   final EdgeInsetsGeometry margin;
 
   /// Space inside the glass, around the items.
+  ///
+  /// The default is 6 on every side. The selection capsule uses that same
+  /// distance from the glass on the top, the bottom, and the outer side of
+  /// the first and last destinations.
   final EdgeInsetsGeometry padding;
 
   /// Gap between item slots.
@@ -114,12 +118,12 @@ class LiquidGlassNavigationStyle {
   /// Outer corner radius of the glass.
   final BorderRadiusGeometry borderRadius;
 
-  /// Outer limit of the selection capsule inside each item slot.
+  /// Breathing room around the selected icon, label, badge, and custom child.
   ///
-  /// The capsule hugs the selected icon, label, badge, and custom child. It
-  /// does not grow to fill the slot. This inset is the closest the capsule
-  /// may come to the slot edge, and it is ignored on an axis where it would
-  /// cut through that content.
+  /// The capsule uses the smallest side as one even margin. It does not grow
+  /// to fill the slot. At the first and last destinations, the gap from the
+  /// capsule to the glass matches the gap above and below the capsule. A
+  /// shorter bar reduces this margin so the content still fits.
   final EdgeInsetsGeometry indicatorInset;
 
   /// Corner radius of the selection capsule.

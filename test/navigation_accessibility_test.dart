@@ -115,8 +115,8 @@ void main() {
     await tester.pump();
     final render = indicatorRender(tester);
     expect(
-      render.debugIndicatorRect!.center.dx,
-      closeTo(render.debugItemRects[2].center.dx, 1),
+      render.debugItemRects[2].contains(render.debugIndicatorRect!.center),
+      isTrue,
     );
   });
 }

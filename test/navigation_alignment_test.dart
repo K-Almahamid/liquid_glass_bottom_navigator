@@ -1,9 +1,74 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:liquid_glass_bottom_navigator/src/glass_surface.dart';
 
 import 'harness.dart';
 
 void main() {
+  testWidgets('end capsules use one gap on the top, bottom, and outer side', (
+    tester,
+  ) async {
+    for (final direction in TextDirection.values) {
+      for (final index in <int>[0, 2]) {
+        await pumpNavigationBar(
+          tester,
+          items: sampleItems(),
+          currentIndex: index,
+          onIndexChanged: (_) {},
+          labelMode: LiquidGlassLabelMode.selected,
+          textDirection: direction,
+        );
+        final before = tester.getRect(find.byIcon(Icons.home_rounded));
+        _expectAligned(_iconCenters(tester));
+        _expectEqualOuterGap(tester, index: index, direction: direction);
+
+        await pumpNavigationBar(
+          tester,
+          items: sampleItems(),
+          currentIndex: index == 0 ? 2 : 0,
+          onIndexChanged: (_) {},
+          labelMode: LiquidGlassLabelMode.selected,
+          textDirection: direction,
+        );
+        await tester.pump(const Duration(seconds: 1));
+        final after = tester.getRect(find.byIcon(Icons.home_rounded));
+        expect(after.left, closeTo(before.left, 0.5));
+        expect(after.top, closeTo(before.top, 0.5));
+        _expectEqualOuterGap(
+          tester,
+          index: index == 0 ? 2 : 0,
+          direction: direction,
+        );
+      }
+    }
+  });
+
+  testWidgets('a narrow bar keeps the capsule inside the glass', (
+    tester,
+  ) async {
+    await pumpNavigationBar(
+      tester,
+      items: sampleItems(),
+      currentIndex: 0,
+      onIndexChanged: (_) {},
+      labelMode: LiquidGlassLabelMode.always,
+      surface: const Size(150, 240),
+      textScale: 1.6,
+    );
+    expect(tester.takeException(), isNull);
+    _expectAligned(_iconCenters(tester));
+    final glass = tester.getRect(find.byType(GlassSurface));
+    final indicator = _global(
+      tester,
+      indicatorRender(tester).debugIndicatorRect!,
+    );
+    expect(indicator.left, greaterThanOrEqualTo(glass.left - 0.5));
+    expect(indicator.right, lessThanOrEqualTo(glass.right + 0.5));
+    expect(indicator.top, greaterThanOrEqualTo(glass.top - 0.5));
+    expect(indicator.bottom, lessThanOrEqualTo(glass.bottom + 0.5));
+    expect(glass.height, greaterThanOrEqualTo(48));
+  });
+
   testWidgets(
     'icons share a vertical center in every label mode and stay put',
     (tester) async {
@@ -84,7 +149,7 @@ void main() {
       _expectContains(indicator, icon);
       _expectContains(indicator, label);
       _expectContains(indicator, badge);
-      expect(indicator.center.dx, closeTo(slot.center.dx, 1));
+      expect(indicator.center.dx, closeTo(icon.center.dx, 1.5));
     }
   });
 
@@ -235,7 +300,11 @@ void main() {
       final settled = indicatorRender(tester);
       final settledRect = settled.debugIndicatorRect!;
       final slot = settled.debugItemRects[2];
-      expect(settledRect.center.dx, closeTo(slot.center.dx, 1));
+      final archive = tester.getRect(find.byIcon(Icons.inbox_outlined));
+      expect(
+        _global(tester, settledRect).center.dx,
+        closeTo(archive.center.dx, 1.5),
+      );
       expect(settledRect.width, greaterThan(home.width + 4));
       expect(settledRect.width, lessThan(slot.width - 8));
       _expectContains(
@@ -267,6 +336,28 @@ void _expectAligned(List<double> centers) {
 Rect _global(WidgetTester tester, Rect local) {
   final box = indicatorRender(tester);
   return local.shift(box.localToGlobal(Offset.zero));
+}
+
+void _expectEqualOuterGap(
+  WidgetTester tester, {
+  required int index,
+  required TextDirection direction,
+}) {
+  final glass = tester.getRect(find.byType(GlassSurface));
+  final indicator = _global(
+    tester,
+    indicatorRender(tester).debugIndicatorRect!,
+  );
+  final top = indicator.top - glass.top;
+  final bottom = glass.bottom - indicator.bottom;
+  final outerOnLeft = direction == TextDirection.ltr ? index == 0 : index != 0;
+  final side = outerOnLeft
+      ? indicator.left - glass.left
+      : glass.right - indicator.right;
+  expect(bottom, closeTo(top, 0.75));
+  expect(side, closeTo(top, 0.75));
+  expect(top, inInclusiveRange(4, 10));
+  expect(indicator.width, lessThan(glass.width / 2));
 }
 
 void _expectContains(Rect outer, Rect inner) {

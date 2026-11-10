@@ -116,7 +116,7 @@ A child that wins the gesture arena, such as its own button, can block the item 
 - `always` shows every label that was provided.
 - `selected` shows the selected item's label and keeps the other labels in the layout at opacity 0.
 
-Items without labels are valid in every mode. Icons share one vertical center. A label sits under that center and does not move it. When any label is showing, items without a label keep the same label line. The bar height does not jump when the selection changes.
+Items without labels are valid in every mode. Icons share one vertical center. A label sits under that center and does not move it. When any label is showing, items without a label keep the same label line. The bar height does not jump when the selection changes. The capsule uses one even margin around that content. On the first and last destinations, its distance to the glass matches on the top, the bottom, and the outer side.
 
 ## Layout and glass
 
@@ -127,7 +127,7 @@ Items without labels are valid in every mode. Icons share one vertical center. A
 - `maxHeight` and `expandForTextScale` for large text
 - `margin`, `padding`, `itemPadding`, and `itemSpacing` as `EdgeInsetsGeometry` where a direction matters
 - `itemLayout`: `equal` slots (default) or `intrinsic` widths. Intrinsic rows that do not fit fall back to equal slots. The indicator uses the measured slot, not a guessed width
-- `borderRadius`, `indicatorInset`, `indicatorRadius`
+- `borderRadius`, `indicatorInset` (even breathing room; the smallest side wins), `indicatorRadius`
 - `iconSize`, label styles, and `labelSpacing`
 - `blurSigma` (zero disables the blur), `borderWidth`
 - `elevation`, with optional `shadowBlurRadius` and `shadowOffset`
