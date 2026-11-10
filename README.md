@@ -6,6 +6,15 @@ The bar is controlled by your widget. It does not own a navigation stack, a rout
 
 **Status:** the navigation bar, glass surface, motion, badges, haptics, themes, and accessibility behavior in this README are implemented. This package does not simulate optical glass refraction.
 
+## Preview
+
+These frames are from the example on an iPhone 18 Pro Max simulator. The colored shapes are page content behind one backdrop blur. The GIF is the morphing indicator traveling from Home to Inbox and back.
+
+<img src="screenshots/light.png" alt="Light theme with Inbox selected" width="360">
+<img src="screenshots/dark.png" alt="Dark theme with Inbox selected" width="360">
+
+![Morphing indicator moving between Home and Inbox](screenshots/liquid_animation.gif)
+
 ## Install
 
 Requires Flutter `>=3.47.0` and Dart `^3.13.4`. The spring uses `SpringDescription.withDurationAndBounce`. That constraint was not lowered, because an older SDK was not available to validate here.
@@ -151,7 +160,7 @@ flutter run
 
 The example scrolls colored notes behind the bar and can switch label mode, theme, blur, size, radius, margin, motion, haptics, reduced motion, RTL, equal or intrinsic slots, safe area, compact width, custom avatar, badges, and the selected index.
 
-There is no checked-in screenshot or GIF. Capture one from the running example if you need a pub.dev preview. Widget goldens use `blurSigma: 0` because backdrop sampling is not stable across test runs.
+The preview images above are simulator captures, not drawings. Widget goldens still use `blurSigma: 0`, because backdrop sampling is not stable across test runs.
 
 ## Tests
 
