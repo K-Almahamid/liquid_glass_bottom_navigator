@@ -1,3 +1,9 @@
+## 1.1.0
+
+* Adds `enableDragSelection`. It defaults to false, so 1.0.0 callers stay tap-only.
+* When dragging is enabled, a horizontal drag from the selected destination moves the liquid indicator. `onIndexChanged` runs once on release over a different destination. Gaps and misses spring back. `currentIndex` stays parent-owned.
+* Dragging respects RTL slot geometry, reduced motion, haptic settings, and both indicator styles. Pointer movement repaints the indicator and does not rebuild the items.
+
 ## 1.0.0
 
 * First stable release of the controlled liquid-glass bottom navigation bar.

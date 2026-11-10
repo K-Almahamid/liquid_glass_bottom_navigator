@@ -21,10 +21,10 @@ Requires Flutter `>=3.47.0` and Dart `^3.13.4`. The spring uses `SpringDescripti
 
 ```yaml
 dependencies:
-  liquid_glass_bottom_navigator: ^1.0.0
+  liquid_glass_bottom_navigator: ^1.1.0
 ```
 
-Until the package is published, depend on it with a path:
+A local checkout can still use a path dependency:
 
 ```yaml
 dependencies:
@@ -56,7 +56,26 @@ LiquidGlassNavigationBar(
 
 Place the bar over content, usually in a `Stack`, and leave space at the bottom of scrollables. Give the parent a bounded width. The default width is that parent width after the bar's margin. It does not force a full-screen width.
 
-`currentIndex` is the selection. `onIndexChanged` fires only when a tap requests a different item. Programmatic index changes animate the indicator and do not play haptics. Tapping the already selected item does nothing. Building the bar does not call `onIndexChanged`.
+`currentIndex` is the selection. `onIndexChanged` fires when a tap, or a completed drag, requests a different item. Programmatic index changes animate the indicator and do not play haptics. Tapping the already selected item does nothing. Building the bar does not call `onIndexChanged`.
+
+## Drag to select
+
+Dragging is off unless you set `enableDragSelection: true`. Existing callers keep tap-only behavior.
+
+```dart
+LiquidGlassNavigationBar(
+  enableDragSelection: true,
+  currentIndex: index,
+  onIndexChanged: (value) => setState(() => index = value),
+  items: items,
+)
+```
+
+Press the selected destination and drag horizontally. The capsule follows the finger and keeps the grab offset, so it does not jump. The bar does not call `onIndexChanged` while the finger is down. On release, the destination under the finger is the only candidate. A gap, the padding, or a point outside every slot is not a selection: the capsule springs back and the callback is not used. Releasing on the already selected destination does the same.
+
+A different destination calls `onIndexChanged` once. The parent decides whether `currentIndex` changes. If it does, the capsule springs from the drag preview into that slot. If the parent keeps the old index, or changes it later, the capsule follows `currentIndex`. The package does not store a second selection.
+
+The drag starts only on the selected slot, after the touch slop, so a tap still selects. A vertical move is left to the surrounding scroll view. RTL uses the laid-out slot rectangles. `morphingPill` stretches slightly with the drag. `slidingPill`, reduced motion, and `LiquidGlassMotion.none()` follow the finger without that stretch. Haptics play once when a drag requests a new index, and they stay silent for the preview, a snap-back, and a parent-driven index change. Keyboard and screen-reader activation do not require dragging.
 
 An empty `items` list draws the glass surface with no destinations. An index outside `0 .. items.length - 1` selects nothing; taps on real items still report a new index. An invalid index does not throw. Changing the number of items snaps the indicator onto `currentIndex`. A reorder that keeps the same length does not replay motion unless the index changes.
 
@@ -131,11 +150,11 @@ The glass is one clipped `BackdropFilter`, a neutral tint, a hairline, and one s
 
 `respectReducedMotion` defaults to true. `MediaQueryData.disableAnimations` then skips the spring and the stretch and moves the capsule immediately. `LiquidGlassMotion.none()` does the same even when reduced motion is off.
 
-One `AnimationController` drives the capsule. Item widgets are not rebuilt on each tick. Changing the number of items snaps the capsule to the current index instead of continuing a stale flight. Rapid taps retarget from the in-flight rectangle.
+One `AnimationController` drives the capsule. Item widgets are not rebuilt on each tick. Changing the number of items snaps the capsule to the current index instead of continuing a stale flight. Rapid taps retarget from the in-flight rectangle. A drag uses the same spring when the finger lifts. Pointer moves repaint the row and do not rebuild the items.
 
 ## Haptics and badges
 
-`hapticsEnabled` and `haptic` (`selection`, `light`, or `medium`) use Flutter's `HapticFeedback`. Feedback plays once per tap that requests a new index. It does not play for animation frames or for a parent-driven index change. Devices and system settings decide whether anything is felt.
+`hapticsEnabled` and `haptic` (`selection`, `light`, or `medium`) use Flutter's `HapticFeedback`. Feedback plays once per tap or completed drag that requests a new index. It does not play while a finger is moving, when the capsule returns to the current item, or for a parent-driven index change. Devices and system settings decide whether anything is felt.
 
 `LiquidGlassBadge.dot()` draws a dot. `LiquidGlassBadge.count(12)` draws a number, and counts above `maxCount` (default 99) render as `99+`. A count of `0` is hidden. `maxCount` must be at least 1. `LiquidGlassBadge.child` overlays any widget. `LiquidGlassBadge.custom` is the same constructor. Badges are painted outside the item's layout size. The spoken label includes "new notification" or "N notifications", or the custom badge's own `semanticLabel`. That phrase is part of the item label, not a second button.
 
@@ -158,7 +177,7 @@ flutter pub get
 flutter run
 ```
 
-The example scrolls colored notes behind the bar and can switch label mode, theme, blur, size, radius, margin, motion, haptics, reduced motion, RTL, equal or intrinsic slots, safe area, compact width, custom avatar, badges, and the selected index.
+The example scrolls colored notes behind the bar and can switch label mode, theme, blur, size, radius, margin, motion, haptics, drag selection, reduced motion, RTL, equal or intrinsic slots, safe area, compact width, custom avatar, badges, and the selected index. Drag selection starts on. Turn it off from Appearance. The page says: "Hold and drag the selected tab to switch destinations."
 
 The preview images above are simulator captures, not drawings. Widget goldens still use `blurSigma: 0`, because backdrop sampling is not stable across test runs.
 
@@ -176,7 +195,7 @@ Golden files live in `test/goldens/`. They use blur sigma 0 so the images do not
 
 ## Performance
 
-The bar keeps a single animation controller and a single backdrop blur. The blur is clipped to the bar and is not wrapped in its own repaint boundary, so it can sample the page behind it. The item row is the repaint boundary inside that filter. The capsule is painted by the row's render object, so indicator frames do not rebuild the items.
+The bar keeps a single animation controller and a single backdrop blur. The blur is clipped to the bar and is not wrapped in its own repaint boundary, so it can sample the page behind it. The item row is the repaint boundary inside that filter. The capsule is painted by the row's render object, so indicator frames, including a drag, do not rebuild the items.
 
 Blur cost depends on the device, the sigma, and how much of the screen the bar covers. Prefer a modest sigma. Do not stack more `BackdropFilter`s on top of this one.
 
@@ -191,6 +210,6 @@ Replace `macos` with the physical iPhone device id for that follow-up. See `exam
 
 ## Versioning
 
-Version `1.0.0` is the first stable release. The license is BSD 3-Clause. See [LICENSE](LICENSE). Issues: https://github.com/K-Almahamid/liquid_glass_bottom_navigator/issues. See [CONTRIBUTING.md](CONTRIBUTING.md).
+Version `1.1.0` adds opt-in drag selection and stays compatible with `1.0.0`. The license is BSD 3-Clause. See [LICENSE](LICENSE). Issues: https://github.com/K-Almahamid/liquid_glass_bottom_navigator/issues. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 Source: https://github.com/K-Almahamid/liquid_glass_bottom_navigator
