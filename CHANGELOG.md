@@ -1,3 +1,12 @@
+## 1.0.0
+
+* First stable release of the controlled liquid-glass bottom navigation bar.
+* Removes the unused `highlightColor` theme field. The glass does not paint a top sheen.
+* Destinations accept keyboard focus. Enter and Space activate the focused item, and a hairline shows focus.
+* Badge outlines contrast with the badge fill instead of the glass tint.
+* The indicator stroke is kept inside the row so a centered stroke is not clipped by the bar.
+* The example can switch equal and intrinsic slots, and can turn safe-area padding off.
+
 ## 0.1.0
 
 * Initial implementation of a controlled liquid-glass bottom navigation bar.

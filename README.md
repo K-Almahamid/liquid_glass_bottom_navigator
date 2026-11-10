@@ -8,9 +8,11 @@ The bar is controlled by your widget. It does not own a navigation stack, a rout
 
 ## Install
 
+Requires Flutter `>=3.47.0` and Dart `^3.13.4`. The spring uses `SpringDescription.withDurationAndBounce`. That constraint was not lowered, because an older SDK was not available to validate here.
+
 ```yaml
 dependencies:
-  liquid_glass_bottom_navigator: ^0.1.0
+  liquid_glass_bottom_navigator: ^1.0.0
 ```
 
 Until the package is published, depend on it with a path:
@@ -132,6 +134,8 @@ One `AnimationController` drives the capsule. Item widgets are not rebuilt on ea
 
 Each destination is a semantic tab inside a tab bar. Pass `semanticsLabel` on the bar to name the group. The selected tab is exposed as selected, and the name comes from the item `semanticLabel`, then `label`, then `Tab N`. Selection is also visible as the capsule and a heavier label weight, not only as color.
 
+Tab moves focus between destinations. Enter and Space activate the focused destination. A focused item draws a hairline in its foreground color. Screen-reader activation stays on the tab semantics node, so keyboard focus does not add a second button.
+
 `height` is a minimum. With `expandForTextScale` the bar can grow for larger text up to `maxHeight`. Set `expandForTextScale` to false to lock the height. Item slots request a 48 logical pixel minimum height when the bar is at least that tall.
 
 Margins, padding, badge placement, and item order follow `Directionality`.
@@ -145,7 +149,9 @@ flutter pub get
 flutter run
 ```
 
-The example scrolls colored notes behind the bar and can switch label mode, theme, blur, size, radius, margin, motion, haptics, reduced motion, RTL, compact width, custom avatar, badges, and the selected index.
+The example scrolls colored notes behind the bar and can switch label mode, theme, blur, size, radius, margin, motion, haptics, reduced motion, RTL, equal or intrinsic slots, safe area, compact width, custom avatar, badges, and the selected index.
+
+There is no checked-in screenshot or GIF. Capture one from the running example if you need a pub.dev preview. Widget goldens use `blurSigma: 0` because backdrop sampling is not stable across test runs.
 
 ## Tests
 
@@ -176,6 +182,6 @@ Replace `macos` with the physical iPhone device id for that follow-up. See `exam
 
 ## Versioning
 
-Version `0.1.0` is the first implementation. The public API can still change before `1.0.0`. The license is BSD 3-Clause. See [LICENSE](LICENSE).
+Version `1.0.0` is the first stable release. The license is BSD 3-Clause. See [LICENSE](LICENSE). Issues: https://github.com/K-Almahamid/liquid_glass_bottom_navigator/issues. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 Source: https://github.com/K-Almahamid/liquid_glass_bottom_navigator
