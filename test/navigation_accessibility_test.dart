@@ -1,6 +1,7 @@
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'harness.dart';
@@ -43,6 +44,39 @@ void main() {
     final slot = indicatorRender(tester).debugItemRects[0];
     expect(slot.width, greaterThanOrEqualTo(48));
     expect(slot.height, greaterThanOrEqualTo(48));
+  });
+
+  testWidgets('keyboard focus activates the focused destination', (
+    tester,
+  ) async {
+    final selections = <int>[];
+    await pumpNavigationBar(
+      tester,
+      items: sampleItems(withLabels: false),
+      currentIndex: 0,
+      onIndexChanged: selections.add,
+    );
+
+    final nodes = tester
+        .widgetList<Focus>(find.byType(Focus))
+        .map((focus) => focus.focusNode)
+        .whereType<FocusNode>()
+        .where((node) => node.debugLabel == 'LiquidGlassNavigationItem')
+        .toList();
+    expect(nodes.length, greaterThanOrEqualTo(3));
+    nodes[1].requestFocus();
+    await tester.pump();
+    expect(nodes[1].hasFocus, isTrue);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pump();
+    expect(selections, <int>[1]);
+
+    nodes[2].requestFocus();
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.space);
+    await tester.pump();
+    expect(selections, <int>[1, 2]);
   });
 
   testWidgets('reduced motion is reflected by an immediate indicator move', (

@@ -550,13 +550,23 @@ class RenderLiquidNavigation extends RenderBox
     return _fitInsidePaintArea(raw);
   }
 
-  /// Keeps the stretched bubble inside this row so the glass clip cannot
-  /// slice an end that has traveled past the item slots.
+  /// Keeps the stretched bubble, including a centered stroke, inside this row
+  /// so the glass clip cannot slice an end.
   Rect _fitInsidePaintArea(Rect rect) {
     if (!hasSize || size.isEmpty) {
       return rect;
     }
-    final fitted = rect.intersect(Offset.zero & size);
+    final pad = _indicatorBorderWidth > 0 ? _indicatorBorderWidth / 2 : 0.0;
+    final bounds = Rect.fromLTRB(
+      pad,
+      pad,
+      math.max(pad, size.width - pad),
+      math.max(pad, size.height - pad),
+    );
+    if (bounds.width <= 0 || bounds.height <= 0) {
+      return rect;
+    }
+    final fitted = rect.intersect(bounds);
     if (fitted.width <= 0 || fitted.height <= 0) {
       return rect;
     }

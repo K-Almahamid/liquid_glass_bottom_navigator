@@ -1,6 +1,6 @@
 # liquid_glass_bottom_navigator example
 
-A gallery that depends on the local package. Scroll the notes to see the blur, then use the tune button for theme, labels, motion, haptics, reduced motion, RTL, and size. The skip button changes the selection without a tap on the bar.
+A gallery that depends on the local package. Scroll the notes to see the blur, then use the tune button for theme, labels, motion, haptics, reduced motion, RTL, equal or intrinsic slots, safe area, and size. The skip button changes the selection without a tap on the bar.
 
 ```bash
 flutter pub get

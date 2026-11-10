@@ -67,9 +67,10 @@ class LiquidNavigationItemView extends StatelessWidget {
       hint: '${index + 1} of $count',
       onTap: onTap,
       excludeSemantics: true,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
+      child: _ItemControl(
         onTap: onTap,
+        ringColor: foreground,
+        radius: style.indicatorRadius.resolve(Directionality.of(context)),
         child: ConstrainedBox(
           constraints: BoxConstraints(minHeight: style.minTouchTarget),
           child: _body(
@@ -150,6 +151,78 @@ class LiquidNavigationItemView extends StatelessWidget {
   }
 }
 
+/// Keyboard focus and Enter/Space activation for one destination.
+///
+/// [Focus.includeSemantics] is false so the tab semantics stay on the parent
+/// node instead of creating a second button.
+class _ItemControl extends StatefulWidget {
+  const _ItemControl({
+    required this.onTap,
+    required this.ringColor,
+    required this.radius,
+    required this.child,
+  });
+
+  final VoidCallback onTap;
+  final Color ringColor;
+  final BorderRadius radius;
+  final Widget child;
+
+  @override
+  State<_ItemControl> createState() => _ItemControlState();
+}
+
+class _ItemControlState extends State<_ItemControl> {
+  late final FocusNode _focus = FocusNode(
+    debugLabel: 'LiquidGlassNavigationItem',
+  )..addListener(_onFocus);
+
+  void _onFocus() {
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  @override
+  void dispose() {
+    _focus
+      ..removeListener(_onFocus)
+      ..dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Actions(
+      actions: <Type, Action<Intent>>{
+        ActivateIntent: CallbackAction<ActivateIntent>(
+          onInvoke: (ActivateIntent intent) {
+            widget.onTap();
+            return null;
+          },
+        ),
+      },
+      child: Focus(
+        focusNode: _focus,
+        includeSemantics: false,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: widget.onTap,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              borderRadius: widget.radius,
+              border: _focus.hasFocus
+                  ? Border.all(color: widget.ringColor, width: 1.5)
+                  : null,
+            ),
+            child: widget.child,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _BadgeView extends StatelessWidget {
   const _BadgeView({
     required this.badge,
@@ -172,8 +245,11 @@ class _BadgeView extends StatelessWidget {
     };
   }
 
-  Border _badgeRing() {
-    return Border.all(color: theme.glassTint.withValues(alpha: 0.9), width: 1);
+  Border _badgeRing(Color fill) {
+    final ink = fill.computeLuminance() > 0.55
+        ? const Color(0xCC1A1A1A)
+        : const Color(0xE6FFFFFF);
+    return Border.all(color: ink, width: 1);
   }
 
   Widget _dot(Color background) {
@@ -184,7 +260,7 @@ class _BadgeView extends StatelessWidget {
         decoration: BoxDecoration(
           color: background,
           shape: BoxShape.circle,
-          border: _badgeRing(),
+          border: _badgeRing(background),
         ),
       ),
     );
@@ -201,7 +277,7 @@ class _BadgeView extends StatelessWidget {
         decoration: BoxDecoration(
           color: background,
           borderRadius: BorderRadius.circular(minExtent),
-          border: _badgeRing(),
+          border: _badgeRing(background),
         ),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 4),

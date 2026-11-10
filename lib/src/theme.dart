@@ -12,7 +12,6 @@ class LiquidGlassNavigationTheme {
     required this.glassTint,
     this.glassOpacity = 0.72,
     required this.borderColor,
-    required this.highlightColor,
     required this.shadowColor,
     required this.indicatorColor,
     required this.indicatorBorderColor,
@@ -27,7 +26,6 @@ class LiquidGlassNavigationTheme {
     required this.glassTint,
     required this.glassOpacity,
     required this.borderColor,
-    required this.highlightColor,
     required this.shadowColor,
     required this.indicatorColor,
     required this.indicatorBorderColor,
@@ -43,7 +41,6 @@ class LiquidGlassNavigationTheme {
     : glassTint = const Color(0x00000000),
       glassOpacity = 0,
       borderColor = const Color(0x00000000),
-      highlightColor = const Color(0x00000000),
       shadowColor = const Color(0x00000000),
       indicatorColor = const Color(0x00000000),
       indicatorBorderColor = const Color(0x00000000),
@@ -59,7 +56,6 @@ class LiquidGlassNavigationTheme {
     glassTint: Color(0xFFF7F4EF),
     glassOpacity: 0.42,
     borderColor: Color(0x14000000),
-    highlightColor: Color(0x5CFFFFFF),
     shadowColor: Color(0x1A161616),
     indicatorColor: Color(0x24145E59),
     indicatorBorderColor: Color(0x2E145E59),
@@ -75,7 +71,6 @@ class LiquidGlassNavigationTheme {
     glassTint: Color(0xFF12161A),
     glassOpacity: 0.34,
     borderColor: Color(0x1AFFFFFF),
-    highlightColor: Color(0x24FFFFFF),
     shadowColor: Color(0x59000000),
     indicatorColor: Color(0x338FE3D6),
     indicatorBorderColor: Color(0x408FE3D6),
@@ -96,9 +91,6 @@ class LiquidGlassNavigationTheme {
 
   /// Hairline border color.
   final Color borderColor;
-
-  /// Top-edge sheen. This is a gradient, not a second blur.
-  final Color highlightColor;
 
   /// Outer shadow color.
   final Color shadowColor;
@@ -152,7 +144,6 @@ class LiquidGlassNavigationTheme {
     Color? glassTint,
     double? glassOpacity,
     Color? borderColor,
-    Color? highlightColor,
     Color? shadowColor,
     Color? indicatorColor,
     Color? indicatorBorderColor,
@@ -166,7 +157,6 @@ class LiquidGlassNavigationTheme {
       glassTint: glassTint ?? this.glassTint,
       glassOpacity: glassOpacity ?? this.glassOpacity,
       borderColor: borderColor ?? this.borderColor,
-      highlightColor: highlightColor ?? this.highlightColor,
       shadowColor: shadowColor ?? this.shadowColor,
       indicatorColor: indicatorColor ?? this.indicatorColor,
       indicatorBorderColor: indicatorBorderColor ?? this.indicatorBorderColor,

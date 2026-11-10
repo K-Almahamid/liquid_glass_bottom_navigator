@@ -44,6 +44,34 @@ void main() {
     expect(haptics.single.arguments, 'HapticFeedbackType.selectionClick');
   });
 
+  testWidgets('light and medium haptics use their platform types', (
+    tester,
+  ) async {
+    Future<void> expectHaptic(LiquidGlassHaptic haptic, String type) async {
+      final calls = hapticCalls();
+      await pumpNavigationBar(
+        tester,
+        items: sampleItems(),
+        currentIndex: 0,
+        haptic: haptic,
+        onIndexChanged: (_) {},
+      );
+      await tester.tap(find.byIcon(Icons.search_rounded));
+      await tester.pump();
+      expect(calls, hasLength(1));
+      expect(calls.single.arguments, type);
+    }
+
+    await expectHaptic(
+      LiquidGlassHaptic.light,
+      'HapticFeedbackType.lightImpact',
+    );
+    await expectHaptic(
+      LiquidGlassHaptic.medium,
+      'HapticFeedbackType.mediumImpact',
+    );
+  });
+
   testWidgets('tapping the selected item does not notify or play haptics', (
     tester,
   ) async {

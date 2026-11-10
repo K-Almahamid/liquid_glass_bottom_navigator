@@ -33,6 +33,8 @@ class _LiquidGlassExampleAppState extends State<LiquidGlassExampleApp> {
   double _itemSpacing = 0;
   int _itemCount = 5;
   bool _compactWidth = false;
+  bool _equalSlots = true;
+  bool _respectSafeArea = true;
 
   static const _pages = <_Page>[
     _Page(
@@ -128,6 +130,10 @@ class _LiquidGlassExampleAppState extends State<LiquidGlassExampleApp> {
                                 vertical: 6,
                               ),
                               itemSpacing: _itemSpacing,
+                              itemLayout: _equalSlots
+                                  ? LiquidGlassItemLayout.equal
+                                  : LiquidGlassItemLayout.intrinsic,
+                              respectSafeArea: _respectSafeArea,
                               borderRadius: BorderRadius.circular(_radius),
                               indicatorRadius: BorderRadius.circular(
                                 _radius - 8,
@@ -334,6 +340,19 @@ class _LiquidGlassExampleAppState extends State<LiquidGlassExampleApp> {
                     title: const Text('Right to left'),
                     value: _rtl,
                     onChanged: (value) => update(() => _rtl = value),
+                  ),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Equal slots'),
+                    value: _equalSlots,
+                    onChanged: (value) => update(() => _equalSlots = value),
+                  ),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Respect safe area'),
+                    value: _respectSafeArea,
+                    onChanged: (value) =>
+                        update(() => _respectSafeArea = value),
                   ),
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
