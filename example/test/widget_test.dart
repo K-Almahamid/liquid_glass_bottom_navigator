@@ -20,6 +20,10 @@ void main() {
       'Search',
     );
     expect(find.byType(LiquidGlassNavigationBar), findsOneWidget);
+    expect(
+      find.text('Hold and drag the selected tab to switch destinations.'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('appearance controls close from the back arrow', (tester) async {
@@ -41,13 +45,30 @@ void main() {
     await tester.tap(find.byTooltip('Open appearance controls'));
     await tester.pumpAndSettle();
 
+    final sheet = find.byType(Scrollable).last;
+    await tester.scrollUntilVisible(
+      find.text('Drag selection'),
+      80,
+      scrollable: sheet,
+    );
+    expect(find.text('Drag selection'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Equal slots'),
+      80,
+      scrollable: sheet,
+    );
     expect(find.text('Equal slots'), findsOneWidget);
     await tester.scrollUntilVisible(
       find.text('Respect safe area'),
       80,
-      scrollable: find.byType(Scrollable).last,
+      scrollable: sheet,
     );
     expect(find.text('Respect safe area'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Equal slots'),
+      80,
+      scrollable: sheet,
+    );
     await tester.tap(find.text('Equal slots'));
     await tester.pumpAndSettle();
     expect(find.byType(LiquidGlassNavigationBar), findsOneWidget);

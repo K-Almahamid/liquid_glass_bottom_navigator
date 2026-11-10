@@ -165,6 +165,9 @@ class RenderLiquidNavigation extends RenderBox
   List<Rect> _itemRects = const <Rect>[];
   Rect? _paintedIndicator;
   Path? _paintedPath;
+  Rect? _dragRect;
+  double _dragBlob = 0;
+  bool? _dragTravelRight;
 
   /// Slot rectangles from the latest layout, in local coordinates.
   List<Rect> get debugItemRects => List<Rect>.unmodifiable(_itemRects);
@@ -174,6 +177,11 @@ class RenderLiquidNavigation extends RenderBox
 
   /// Capsule path from the latest paint, in local coordinates.
   Path? get debugIndicatorPath => _paintedPath;
+
+  /// Resting indicator rectangles, one per slot, in local coordinates.
+  List<Rect> get indicatorRects {
+    return <Rect>[for (var i = 0; i < _itemRects.length; i++) _rectFor(i)!];
+  }
 
   /// Selected slot.
   int? get targetIndex => _targetIndex;
@@ -201,14 +209,16 @@ class RenderLiquidNavigation extends RenderBox
 
   /// Layout direction.
   ///
-  /// A direction change drops an in-flight origin. The capsule uses the new
-  /// slot geometry instead of a rectangle measured in the previous direction.
+  /// A direction change drops an in-flight origin and any drag preview. The
+  /// capsule uses the new slot geometry instead of a rectangle measured in
+  /// the previous direction.
   set textDirection(TextDirection value) {
     if (_textDirection == value) {
       return;
     }
     _textDirection = value;
     _from = null;
+    _clearDrag();
     markNeedsLayout();
   }
 
@@ -311,21 +321,36 @@ class RenderLiquidNavigation extends RenderBox
     markNeedsPaint();
   }
 
+  /// Shows [rect] while a drag is active. This only repaints.
+  ///
+  /// [blob] and [travelRight] drive the droplet. They are ignored once the
+  /// drag ends through [beginTransition], [jumpTo], or [snap].
+  void showDrag(Rect rect, {required double blob, required bool travelRight}) {
+    _dragRect = rect;
+    _dragBlob = blob.clamp(0.0, 1.0);
+    _dragTravelRight = travelRight;
+    markNeedsPaint();
+  }
+
   /// Starts a transition from the capsule's current rectangle to [index].
   ///
   /// Call this before resetting [animation] so the origin is the in-flight
-  /// position rather than the previous destination.
+  /// position, including a drag preview, rather than the previous destination.
   void beginTransition(int? index) {
-    if (index == _targetIndex && _from == null) {
+    final dragging = _dragRect != null;
+    final visual = _visualRect();
+    _clearDrag();
+    if (index == _targetIndex && _from == null && !dragging) {
       return;
     }
-    _from = _visualRect();
+    _from = visual;
     _targetIndex = index;
     markNeedsPaint();
   }
 
   /// Drops any in-flight origin and shows [index] directly.
   void jumpTo(int? index) {
+    _clearDrag();
     _from = null;
     _targetIndex = index;
     markNeedsPaint();
@@ -333,8 +358,15 @@ class RenderLiquidNavigation extends RenderBox
 
   /// Drops the in-flight origin. The resting position is [targetIndex].
   void snap() {
+    _clearDrag();
     _from = null;
     markNeedsPaint();
+  }
+
+  void _clearDrag() {
+    _dragRect = null;
+    _dragBlob = 0;
+    _dragTravelRight = null;
   }
 
   void _handleTick() {
@@ -509,6 +541,9 @@ class RenderLiquidNavigation extends RenderBox
   }
 
   double _blobAmount() {
+    if (_dragRect != null) {
+      return _dragBlob;
+    }
     if (!_morph || _morphIntensity <= 0 || _from == null) {
       return 0;
     }
@@ -517,6 +552,10 @@ class RenderLiquidNavigation extends RenderBox
   }
 
   bool _travelRight() {
+    final dragged = _dragTravelRight;
+    if (_dragRect != null && dragged != null) {
+      return dragged;
+    }
     final from = _from;
     final target = _rectFor(_targetIndex);
     if (from == null || target == null) {
@@ -533,6 +572,10 @@ class RenderLiquidNavigation extends RenderBox
   }
 
   Rect? _visualRect() {
+    final dragged = _dragRect;
+    if (dragged != null) {
+      return _fitInsidePaintArea(dragged);
+    }
     final target = _rectFor(_targetIndex);
     final from = _from;
     if (target == null) {

@@ -35,6 +35,7 @@ class _LiquidGlassExampleAppState extends State<LiquidGlassExampleApp> {
   bool _compactWidth = false;
   bool _equalSlots = true;
   bool _respectSafeArea = true;
+  bool _dragSelection = true;
 
   static const _pages = <_Page>[
     _Page(
@@ -101,7 +102,12 @@ class _LiquidGlassExampleAppState extends State<LiquidGlassExampleApp> {
                     backgroundColor: Theme.of(context).colorScheme.surface,
                     body: Stack(
                       children: [
-                        _Feed(page: page, pages: pages, bottomSpace: 28),
+                        _Feed(
+                          page: page,
+                          pages: pages,
+                          bottomSpace: 28,
+                          dragHint: _dragSelection,
+                        ),
                         Positioned(
                           left: 0,
                           right: 0,
@@ -114,6 +120,7 @@ class _LiquidGlassExampleAppState extends State<LiquidGlassExampleApp> {
                             indicatorStyle: _indicatorStyle,
                             motion: _motion,
                             hapticsEnabled: _haptics,
+                            enableDragSelection: _dragSelection,
                             items: _items(),
                             style: LiquidGlassNavigationStyle(
                               blurSigma: _blur,
@@ -325,6 +332,12 @@ class _LiquidGlassExampleAppState extends State<LiquidGlassExampleApp> {
                   ),
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
+                    title: const Text('Drag selection'),
+                    value: _dragSelection,
+                    onChanged: (value) => update(() => _dragSelection = value),
+                  ),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
                     title: const Text('Haptics'),
                     value: _haptics,
                     onChanged: (value) => update(() => _haptics = value),
@@ -430,11 +443,13 @@ class _Feed extends StatelessWidget {
     required this.page,
     required this.pages,
     required this.bottomSpace,
+    required this.dragHint,
   });
 
   final _Page page;
   final List<_Page> pages;
   final double bottomSpace;
+  final bool dragHint;
 
   @override
   Widget build(BuildContext context) {
@@ -463,6 +478,13 @@ class _Feed extends StatelessWidget {
                 page.caption,
                 style: Theme.of(context).textTheme.titleMedium,
               ),
+              if (dragHint) ...[
+                const SizedBox(height: 12),
+                Text(
+                  'Hold and drag the selected tab to switch destinations.',
+                  style: Theme.of(context).textTheme.bodyLarge,
+                ),
+              ],
               const SizedBox(height: 24),
               for (var i = 0; i < 6; i++)
                 Container(

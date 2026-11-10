@@ -2,6 +2,115 @@ import 'dart:math' as math;
 
 import 'package:flutter/widgets.dart';
 
+/// Slot under [point], or null when [point] misses every slot.
+///
+/// A gap between slots is not a selection. The nearest slot is not used.
+int? liquidSlotAt(List<Rect> slots, Offset point) {
+  for (var i = 0; i < slots.length; i++) {
+    if (slots[i].contains(point)) {
+      return i;
+    }
+  }
+  return null;
+}
+
+/// Indicator placement while a finger drags the selected capsule.
+///
+/// [slots] are the resting indicator rectangles. [centerX] is the finger
+/// position minus the grab offset from pointer-down, so the capsule does not
+/// jump onto the finger. [stretch] adds the liquid leading/trailing growth.
+/// Reduced motion passes `stretch: false`.
+class LiquidDragPlacement {
+  /// Creates a drag placement.
+  const LiquidDragPlacement({
+    required this.rect,
+    required this.blob,
+    required this.travelRight,
+  });
+
+  /// Capsule bounds before the row clips the stroke.
+  final Rect rect;
+
+  /// Droplet amount from `0` at rest to `1` at full stretch.
+  final double blob;
+
+  /// Whether the leading end points to the right in local coordinates.
+  final bool travelRight;
+}
+
+/// Builds [LiquidDragPlacement] from measured slots and a dragged center.
+LiquidDragPlacement liquidDragPlacement({
+  required List<Rect> slots,
+  required Rect origin,
+  required double centerX,
+  required bool stretch,
+  required double morphIntensity,
+}) {
+  final width = _widthAt(slots, centerX, origin.width);
+  final height = origin.height;
+  final bounds = _slotBounds(slots, origin);
+  final half = width / 2;
+  final minCenter = bounds.left + half;
+  final maxCenter = math.max(minCenter, bounds.right - half);
+  final cx = centerX.clamp(minCenter, maxCenter).toDouble();
+  final top = origin.center.dy - height / 2;
+  var rect = Rect.fromLTWH(cx - half, top, width, height);
+  final delta = cx - origin.center.dx;
+  final travelRight = delta >= 0;
+  final intensity = morphIntensity.clamp(0.0, 1.0);
+  if (!stretch || intensity <= 0 || delta.abs() < 1) {
+    return LiquidDragPlacement(rect: rect, blob: 0, travelRight: travelRight);
+  }
+  final cap = rect.width * 0.85;
+  final extra = math.min(delta.abs() * 0.4, cap) * intensity;
+  final leading = extra * 0.72;
+  final trailing = extra * 0.28;
+  final left = travelRight ? rect.left - trailing : rect.left - leading;
+  final right = travelRight ? rect.right + leading : rect.right + trailing;
+  rect = Rect.fromLTRB(left, rect.top, math.max(left, right), rect.bottom);
+  final blob = cap <= 0 ? 0.0 : (extra / cap).clamp(0.0, 1.0);
+  return LiquidDragPlacement(rect: rect, blob: blob, travelRight: travelRight);
+}
+
+Rect _slotBounds(List<Rect> slots, Rect origin) {
+  var left = origin.left;
+  var right = origin.right;
+  var top = origin.top;
+  var bottom = origin.bottom;
+  for (final slot in slots) {
+    left = math.min(left, slot.left);
+    right = math.max(right, slot.right);
+    top = math.min(top, slot.top);
+    bottom = math.max(bottom, slot.bottom);
+  }
+  return Rect.fromLTRB(left, top, right, bottom);
+}
+
+double _widthAt(List<Rect> slots, double x, double fallback) {
+  if (slots.isEmpty) {
+    return fallback;
+  }
+  final ordered = List<Rect>.of(slots)
+    ..sort((a, b) => a.left.compareTo(b.left));
+  for (final slot in ordered) {
+    if (x >= slot.left && x <= slot.right) {
+      return slot.width;
+    }
+  }
+  for (var i = 0; i < ordered.length - 1; i++) {
+    final a = ordered[i];
+    final b = ordered[i + 1];
+    if (x > a.right && x < b.left && b.left > a.right) {
+      final t = (x - a.right) / (b.left - a.right);
+      return a.width + (b.width - a.width) * t;
+    }
+  }
+  if (x < ordered.first.left) {
+    return ordered.first.width;
+  }
+  return ordered.last.width;
+}
+
 /// Indicator rectangle for a selection transition.
 ///
 /// [t] is the spring progress. Values outside `0..1` are clamped.

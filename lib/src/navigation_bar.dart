@@ -1,10 +1,12 @@
 import 'dart:ui' show SemanticsRole;
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/physics.dart';
 import 'package:flutter/services.dart';
 
 import 'glass_surface.dart';
+import 'indicator_geometry.dart';
 import 'item.dart';
 import 'item_view.dart';
 import 'motion.dart';
@@ -16,8 +18,13 @@ import 'theme.dart';
 /// Floating liquid-glass bottom navigation bar.
 ///
 /// The bar is a controlled widget. [currentIndex] is owned by the parent, and
-/// [onIndexChanged] reports taps that request a different item. It does not
+/// [onIndexChanged] reports taps, and drag releases when
+/// [enableDragSelection] is true, that request a different item. It does not
 /// own a navigation stack and does not depend on a state-management package.
+///
+/// Dragging previews the indicator only. [currentIndex] stays the selection
+/// until the parent changes it. A drag that ends on the current item, in a
+/// gap, or outside every destination does not call [onIndexChanged].
 ///
 /// An empty [items] list renders the glass surface with no destinations. An
 /// index outside `0 .. items.length - 1` selects nothing and still accepts
@@ -45,6 +52,7 @@ class LiquidGlassNavigationBar extends StatefulWidget {
     this.indicatorStyle = LiquidGlassIndicatorStyle.morphingPill,
     this.hapticsEnabled = true,
     this.haptic = LiquidGlassHaptic.selection,
+    this.enableDragSelection = false,
     this.semanticsLabel,
     super.key,
   });
@@ -55,10 +63,12 @@ class LiquidGlassNavigationBar extends StatefulWidget {
   /// Selected destination. Ignored when it does not point at an item.
   final int currentIndex;
 
-  /// Called when a tap requests a different index.
+  /// Called when a tap or a completed drag requests a different index.
   ///
   /// The parent should set [currentIndex] to the reported value. The bar does
-  /// not change its own selection.
+  /// not change its own selection. A drag calls this once, on release, and
+  /// only when the finger is inside a different destination. If the parent
+  /// keeps the old index, the indicator returns to it.
   final ValueChanged<int>? onIndexChanged;
 
   /// Dimensions, blur, and indicator geometry.
@@ -85,6 +95,15 @@ class LiquidGlassNavigationBar extends StatefulWidget {
   /// Which haptic to play when [hapticsEnabled] is true.
   final LiquidGlassHaptic haptic;
 
+  /// Whether a horizontal drag from the selected item can request a new index.
+  ///
+  /// Defaults to false, so existing bars stay tap-only. When true, the drag
+  /// starts on the selected destination, follows the finger, and calls
+  /// [onIndexChanged] once if released over a different destination. Taps,
+  /// keyboard activation, and vertical scrolling are unchanged. The drag is
+  /// a preview: [currentIndex] remains the parent's value.
+  final bool enableDragSelection;
+
   /// Spoken name for the bar itself.
   ///
   /// Item names stay on each destination. This label names the tab bar and
@@ -101,6 +120,23 @@ class _LiquidGlassNavigationBarState extends State<LiquidGlassNavigationBar>
   late final AnimationController _controller;
   final GlobalKey _layoutKey = GlobalKey();
   bool _reduceMotion = false;
+  bool _disposed = false;
+  TextDirection? _direction;
+
+  /// Pointer-down hit the selected slot, so a later horizontal drag may track.
+  bool _dragArmed = false;
+
+  /// The pointer moved far enough horizontally and the indicator is following.
+  bool _dragging = false;
+
+  /// The active pointer, so a second finger cannot retarget the preview.
+  int? _pointer;
+  Offset? _downLocal;
+
+  /// Index requested on release, until the parent commits or the preview ends.
+  int? _claimedIndex;
+  Rect? _dragOrigin;
+  double _grabDx = 0;
 
   RenderLiquidNavigation? get _render {
     final object = _layoutKey.currentContext?.findRenderObject();
@@ -126,13 +162,20 @@ class _LiquidGlassNavigationBarState extends State<LiquidGlassNavigationBar>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    final direction = Directionality.of(context);
+    final directionChanged = _direction != null && _direction != direction;
+    _direction = direction;
     final next = _resolveReducedMotion();
     final becameReduced = next && !_reduceMotion;
     _reduceMotion = next;
     if (becameReduced) {
+      _endDragTracking();
       _controller.stop();
       _controller.value = 1;
       _render?.snap();
+    } else if (directionChanged) {
+      // The render object drops the drag preview when direction changes.
+      _endDragTracking();
     }
   }
 
@@ -142,9 +185,17 @@ class _LiquidGlassNavigationBarState extends State<LiquidGlassNavigationBar>
     _reduceMotion = _resolveReducedMotion();
     final itemsChanged = widget.items.length != oldWidget.items.length;
     final indexChanged = widget.currentIndex != oldWidget.currentIndex;
+    final dragDisabled =
+        oldWidget.enableDragSelection && !widget.enableDragSelection;
     if (!itemsChanged && !indexChanged) {
+      if (dragDisabled && _dragging) {
+        _endDragTracking();
+        _settleToAuthority();
+      }
       return;
     }
+    // Parent index and item count win over an in-flight preview.
+    _endDragTracking();
     final render = _render;
     if (render == null) {
       return;
@@ -181,6 +232,183 @@ class _LiquidGlassNavigationBarState extends State<LiquidGlassNavigationBar>
     );
   }
 
+  bool get _canStretch {
+    return widget.indicatorStyle == LiquidGlassIndicatorStyle.morphingPill &&
+        !_reduceMotion &&
+        widget.motion.morphIntensity > 0;
+  }
+
+  void _endDragTracking() {
+    _dragArmed = false;
+    _dragging = false;
+    _claimedIndex = null;
+    _dragOrigin = null;
+    _pointer = null;
+    _downLocal = null;
+  }
+
+  /// Records the grab offset only when the pointer starts on the selection.
+  ///
+  /// This listener does not enter the gesture arena. A tap still belongs to
+  /// the item, and a vertical move still belongs to a surrounding scroll view.
+  /// Tracking starts only after [kTouchSlop], and only when that movement is
+  /// more horizontal than vertical.
+  void _onPointerDown(PointerDownEvent event) {
+    if (_pointer != null) {
+      return;
+    }
+    final render = _render;
+    final index = _effectiveIndex;
+    _pointer = event.pointer;
+    _downLocal = event.localPosition;
+    _dragging = false;
+    if (render == null || index == null) {
+      _dragArmed = false;
+      return;
+    }
+    final slots = render.debugItemRects;
+    if (index >= slots.length || !slots[index].contains(event.localPosition)) {
+      _dragArmed = false;
+      return;
+    }
+    final origin = render.debugIndicatorRect ?? render.indicatorRects[index];
+    _dragArmed = true;
+    _dragOrigin = origin;
+    _grabDx = event.localPosition.dx - origin.center.dx;
+  }
+
+  void _onPointerMove(PointerMoveEvent event) {
+    if (event.pointer != _pointer || !_dragArmed || _downLocal == null) {
+      return;
+    }
+    if (!_dragging) {
+      final delta = event.localPosition - _downLocal!;
+      if (delta.distance <= kTouchSlop) {
+        return;
+      }
+      if (delta.dx.abs() < delta.dy.abs()) {
+        _dragArmed = false;
+        return;
+      }
+    }
+    _trackDrag(event.localPosition);
+  }
+
+  void _onPointerUp(PointerUpEvent event) {
+    if (event.pointer != _pointer) {
+      return;
+    }
+    if (_dragging) {
+      _finishDrag(event.localPosition);
+      return;
+    }
+    _endDragTracking();
+  }
+
+  void _onPointerCancel(PointerCancelEvent event) {
+    if (event.pointer != _pointer) {
+      return;
+    }
+    final wasDragging = _dragging;
+    _endDragTracking();
+    if (wasDragging) {
+      _settleToAuthority();
+    }
+  }
+
+  void _trackDrag(Offset local) {
+    if (!_dragArmed || _dragOrigin == null || _disposed) {
+      return;
+    }
+    final render = _render;
+    final origin = _dragOrigin;
+    if (render == null || origin == null || !render.attached) {
+      return;
+    }
+    if (!_dragging) {
+      _dragging = true;
+      _controller.stop();
+    }
+    final placement = liquidDragPlacement(
+      slots: render.indicatorRects,
+      origin: origin,
+      centerX: local.dx - _grabDx,
+      stretch: _canStretch,
+      morphIntensity: widget.motion.morphIntensity,
+    );
+    render.showDrag(
+      placement.rect,
+      blob: placement.blob,
+      travelRight: placement.travelRight,
+    );
+  }
+
+  /// Resolves the release against slot rectangles, not the nearest center.
+  void _finishDrag(Offset local) {
+    if (!_dragging || _disposed) {
+      _endDragTracking();
+      return;
+    }
+    final render = _render;
+    final originIndex = widget.currentIndex;
+    _dragArmed = false;
+    _dragging = false;
+    _dragOrigin = null;
+    _pointer = null;
+    _downLocal = null;
+    if (render == null || !render.attached) {
+      _claimedIndex = null;
+      return;
+    }
+    final index = liquidSlotAt(render.debugItemRects, local);
+    final callback = widget.onIndexChanged;
+    final eligible =
+        index != null &&
+        index != originIndex &&
+        index >= 0 &&
+        index < widget.items.length &&
+        callback != null;
+    if (!eligible) {
+      _claimedIndex = null;
+      _settleToAuthority();
+      return;
+    }
+    _claimedIndex = index;
+    if (widget.hapticsEnabled) {
+      _playHaptic();
+    }
+    callback(index);
+    if (_claimedIndex != index || !mounted) {
+      return;
+    }
+    // The callback above may have scheduled the parent's update. This frame
+    // is the earliest moment that update is visible. scheduleFrame is required
+    // because a post-frame callback alone does not request one.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_disposed || !mounted) {
+        return;
+      }
+      if (_claimedIndex == index && widget.currentIndex != index) {
+        _claimedIndex = null;
+        _settleToAuthority();
+      }
+    });
+    WidgetsBinding.instance.scheduleFrame();
+  }
+
+  /// Springs from the current preview back to [currentIndex].
+  void _settleToAuthority() {
+    if (_disposed || !mounted) {
+      return;
+    }
+    final render = _render;
+    if (render == null || !render.attached) {
+      return;
+    }
+    render.beginTransition(_effectiveIndex);
+    _runMotion();
+  }
+
   void _handleTap(int index) {
     if (index < 0 || index >= widget.items.length) {
       return;
@@ -211,6 +439,8 @@ class _LiquidGlassNavigationBarState extends State<LiquidGlassNavigationBar>
 
   @override
   void dispose() {
+    _disposed = true;
+    _endDragTracking();
     _controller.stop();
     _controller.dispose();
     super.dispose();
@@ -243,7 +473,7 @@ class _LiquidGlassNavigationBarState extends State<LiquidGlassNavigationBar>
       width = width.clamp(minWidth, maxWidth).toDouble();
     }
 
-    final layout = LiquidNavigationLayout(
+    final layoutChild = LiquidNavigationLayout(
       key: _layoutKey,
       targetIndex: _effectiveIndex,
       animation: _controller,
@@ -274,6 +504,16 @@ class _LiquidGlassNavigationBarState extends State<LiquidGlassNavigationBar>
           ),
       ],
     );
+    final layout = widget.enableDragSelection
+        ? Listener(
+            behavior: HitTestBehavior.deferToChild,
+            onPointerDown: _onPointerDown,
+            onPointerMove: _onPointerMove,
+            onPointerUp: _onPointerUp,
+            onPointerCancel: _onPointerCancel,
+            child: layoutChild,
+          )
+        : layoutChild;
 
     final glass = GlassSurface(
       style: style,
