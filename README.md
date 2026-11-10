@@ -191,7 +191,7 @@ flutter analyze
 flutter test
 ```
 
-Golden files live in `test/goldens/`. They use blur sigma 0 so the images do not depend on backdrop sampling. Regenerate them with `flutter test --update-goldens` on the platform you intend to compare. Goldens produced on one operating system can differ on another.
+Golden files live in `test/goldens/`. They use blur sigma 0 so the images do not depend on backdrop sampling. Regenerate them with `flutter test --update-goldens` on the platform you intend to compare. Goldens produced on one operating system can differ on another; the test harness allows up to 2% pixel variance for that reason.
 
 ## Performance
 
