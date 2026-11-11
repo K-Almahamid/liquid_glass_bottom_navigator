@@ -175,7 +175,6 @@ class RenderLiquidNavigation extends RenderBox
   Rect? _from;
   List<Rect> _itemRects = const <Rect>[];
   List<Rect> _contentRects = const <Rect>[];
-  bool _contentDirty = true;
   Rect? _paintedIndicator;
   Path? _paintedPath;
   Rect? _dragRect;
@@ -439,7 +438,6 @@ class RenderLiquidNavigation extends RenderBox
       size = constraints.constrain(Size(width, minHeight.toDouble()));
       _itemRects = const <Rect>[];
       _contentRects = const <Rect>[];
-      _contentDirty = false;
       _remapFrom(previousSize);
       return;
     }
@@ -528,7 +526,6 @@ class RenderLiquidNavigation extends RenderBox
     }
 
     _itemRects = rects;
-    _contentDirty = true;
     _remapFrom(previousSize);
   }
 
@@ -572,11 +569,37 @@ class RenderLiquidNavigation extends RenderBox
       content.right + margins.horizontal,
       content.bottom + margins.vertical,
     );
-    final rect = hugged.intersect(slotLimit);
+    // Intersecting a capsule that hangs past one slot edge would slide its
+    // center off the icon. Shrink both sides of that axis instead.
+    final rect = _centeredIn(hugged, slotLimit);
     if (rect.width <= 0 || rect.height <= 0) {
       return slotLimit;
     }
     return rect;
+  }
+
+  /// [preferred] when it fits in [limit]. Otherwise the same center, inset
+  /// equally until both edges are inside [limit].
+  Rect _centeredIn(Rect preferred, Rect limit) {
+    if (preferred.left >= limit.left - 0.01 &&
+        preferred.top >= limit.top - 0.01 &&
+        preferred.right <= limit.right + 0.01 &&
+        preferred.bottom <= limit.bottom + 0.01) {
+      return preferred;
+    }
+    final center = preferred.center;
+    final roomW = math.min(center.dx - limit.left, limit.right - center.dx);
+    final roomH = math.min(center.dy - limit.top, limit.bottom - center.dy);
+    final halfW = math.min(preferred.width / 2, math.max(0.0, roomW));
+    final halfH = math.min(preferred.height / 2, math.max(0.0, roomH));
+    if (halfW <= 0 || halfH <= 0) {
+      final fallback = preferred.intersect(limit);
+      if (fallback.width <= 0 || fallback.height <= 0) {
+        return limit;
+      }
+      return fallback;
+    }
+    return Rect.fromCenter(center: center, width: halfW * 2, height: halfH * 2);
   }
 
   ({double horizontal, double vertical}) _marginsFor(Rect content) {
@@ -597,12 +620,12 @@ class RenderLiquidNavigation extends RenderBox
   }
 
   void _ensureContentRects() {
-    if (!_contentDirty) {
-      return;
-    }
+    // Measured on every paint. Each item is a relayout boundary, so a label
+    // that takes its final width after the first layout recenters the icon
+    // without laying this row out again. A cached rect would stay on the old
+    // icon box and the capsule would settle off-center at the ends.
     final children = _children;
     _contentRects = <Rect>[for (final child in children) _contentInRow(child)];
-    _contentDirty = false;
   }
 
   Rect _contentInRow(RenderBox slotChild) {
@@ -612,7 +635,8 @@ class RenderLiquidNavigation extends RenderBox
       return parentData.offset & slotChild.size;
     }
     final origin = _offsetWithin(this, content);
-    return _paintBounds(content).shift(origin);
+    final bounds = _paintBounds(content);
+    return bounds.shift(origin);
   }
 
   RenderNavigationContent? _findContent(RenderObject node) {

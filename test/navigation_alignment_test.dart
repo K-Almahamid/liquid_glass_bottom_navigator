@@ -481,6 +481,179 @@ void main() {
     final badge = tester.getRect(find.text('12'));
     expect(badge.center.dy, greaterThan(icon.top));
   });
+
+  testWidgets('edge icons sit on the capsule center in every label mode', (
+    tester,
+  ) async {
+    const icons = <IconData>[
+      Icons.home_rounded,
+      Icons.search_rounded,
+      Icons.inbox_outlined,
+      Icons.bookmark_outline_rounded,
+      Icons.person_outline_rounded,
+    ];
+    const labels = <String>['Home', 'Search', 'Inbox', 'Saved', 'Profile'];
+    final items = <LiquidGlassNavigationItem>[
+      for (var i = 0; i < icons.length; i++)
+        LiquidGlassNavigationItem(icon: icons[i], label: labels[i]),
+    ];
+    for (final direction in TextDirection.values) {
+      for (final mode in LiquidGlassLabelMode.values) {
+        for (final index in <int>[0, 2, 4]) {
+          await pumpNavigationBar(
+            tester,
+            items: items,
+            currentIndex: index,
+            onIndexChanged: (_) {},
+            labelMode: mode,
+            textDirection: direction,
+            surface: const Size(402, 240),
+          );
+          await tester.pump(const Duration(seconds: 1));
+          final icon = tester.getRect(find.byIcon(icons[index]));
+          final indicator = _global(
+            tester,
+            indicatorRender(tester).debugIndicatorRect!,
+          );
+          expect(
+            icon.center.dx,
+            closeTo(indicator.center.dx, 0.5),
+            reason: '$mode $direction index $index',
+          );
+          if (mode != LiquidGlassLabelMode.hidden) {
+            final label = tester.getRect(find.text(labels[index]));
+            expect(label.center.dx, closeTo(icon.center.dx, 0.5));
+            expect(label.center.dx, closeTo(indicator.center.dx, 0.5));
+          }
+        }
+      }
+    }
+  });
+
+  testWidgets('badges do not move the capsule off the icon', (tester) async {
+    final plain = <LiquidGlassNavigationItem>[
+      const LiquidGlassNavigationItem(icon: Icons.home_rounded, label: 'Home'),
+      const LiquidGlassNavigationItem(
+        icon: Icons.search_rounded,
+        label: 'Search',
+      ),
+      const LiquidGlassNavigationItem(
+        icon: Icons.person_outline_rounded,
+        label: 'Profile',
+      ),
+    ];
+    final badged = <LiquidGlassNavigationItem>[
+      const LiquidGlassNavigationItem(
+        icon: Icons.home_rounded,
+        label: 'Home',
+        badge: LiquidGlassBadge.count(3),
+      ),
+      const LiquidGlassNavigationItem(
+        icon: Icons.search_rounded,
+        label: 'Search',
+        badge: LiquidGlassBadge.dot(),
+      ),
+      const LiquidGlassNavigationItem(
+        icon: Icons.person_outline_rounded,
+        label: 'Profile',
+        badge: LiquidGlassBadge.count(9),
+      ),
+    ];
+    for (final direction in TextDirection.values) {
+      for (final index in <int>[0, 1, 2]) {
+        await pumpNavigationBar(
+          tester,
+          items: plain,
+          currentIndex: index,
+          onIndexChanged: (_) {},
+          textDirection: direction,
+          surface: const Size(402, 240),
+        );
+        await tester.pump(const Duration(seconds: 1));
+        final plainIcon = tester.getRect(
+          find.byIcon(
+            index == 0
+                ? Icons.home_rounded
+                : index == 1
+                ? Icons.search_rounded
+                : Icons.person_outline_rounded,
+          ),
+        );
+        final plainIndicator = _global(
+          tester,
+          indicatorRender(tester).debugIndicatorRect!,
+        );
+
+        await pumpNavigationBar(
+          tester,
+          items: badged,
+          currentIndex: index,
+          onIndexChanged: (_) {},
+          textDirection: direction,
+          surface: const Size(402, 240),
+        );
+        await tester.pump(const Duration(seconds: 1));
+        final icon = tester.getRect(
+          find.byIcon(
+            index == 0
+                ? Icons.home_rounded
+                : index == 1
+                ? Icons.search_rounded
+                : Icons.person_outline_rounded,
+          ),
+        );
+        final indicator = _global(
+          tester,
+          indicatorRender(tester).debugIndicatorRect!,
+        );
+        expect(icon.center.dx, closeTo(indicator.center.dx, 0.5));
+        expect(icon.center.dx, closeTo(plainIcon.center.dx, 0.5));
+        expect(indicator.center.dx, closeTo(plainIndicator.center.dx, 0.5));
+        expect(indicator.width, closeTo(plainIndicator.width, 0.5));
+      }
+    }
+  });
+
+  testWidgets('a custom edge child stays centered in the capsule', (
+    tester,
+  ) async {
+    const childKey = Key('profile-mark');
+    final items = <LiquidGlassNavigationItem>[
+      const LiquidGlassNavigationItem(icon: Icons.home_rounded, label: 'Home'),
+      const LiquidGlassNavigationItem(
+        icon: Icons.search_rounded,
+        label: 'Search',
+      ),
+      const LiquidGlassNavigationItem(
+        label: 'Profile',
+        child: SizedBox(key: childKey, width: 28, height: 28),
+      ),
+    ];
+    for (final direction in TextDirection.values) {
+      for (final mode in LiquidGlassLabelMode.values) {
+        await pumpNavigationBar(
+          tester,
+          items: items,
+          currentIndex: 2,
+          onIndexChanged: (_) {},
+          labelMode: mode,
+          textDirection: direction,
+          surface: const Size(360, 240),
+        );
+        await tester.pump(const Duration(seconds: 1));
+        final child = tester.getRect(find.byKey(childKey));
+        final indicator = _global(
+          tester,
+          indicatorRender(tester).debugIndicatorRect!,
+        );
+        expect(child.center.dx, closeTo(indicator.center.dx, 0.5));
+        if (mode != LiquidGlassLabelMode.hidden) {
+          final label = tester.getRect(find.text('Profile'));
+          expect(label.center.dx, closeTo(child.center.dx, 0.5));
+        }
+      }
+    }
+  });
 }
 
 List<double> _iconCenters(WidgetTester tester) {

@@ -116,7 +116,7 @@ A child that wins the gesture arena, such as its own button, can block the item 
 - `always` shows every label that was provided. The selected capsule wraps that icon and the whole label.
 - `selected` shows the selected item's label and keeps the other labels in the layout at opacity 0, so the icon line does not jump. The capsule still wraps the selected icon and label.
 
-Items without labels are valid in every mode. Icons share one vertical center. When a label line is reserved, that line is under the icon and the icon-plus-label column is centered in the glass. When labels are hidden, the label line is not reserved and the icon is centered. The bar height does not jump when the selection changes. On the first and last destinations, the capsule's distance to the glass matches on the top, the bottom, and the outer side when the slot can hold that inset. A narrow slot or large text keeps the capsule inside the glass instead of forcing the gap.
+Items without labels are valid in every mode. Icons share one vertical center. When a label line is reserved, that line is under the icon and the icon-plus-label column is centered in the glass. When labels are hidden, the label line is not reserved and the icon is centered. The bar height does not jump when the selection changes. On the first and last destinations, the capsule's distance to the glass matches on the top, the bottom, and the outer side when the slot can hold that inset. A narrow slot or large text keeps the capsule inside the glass, centered on the icon and label, instead of forcing the gap.
 
 ## Layout and glass
 
