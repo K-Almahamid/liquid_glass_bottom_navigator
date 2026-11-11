@@ -18,8 +18,13 @@ void main() {
           labelMode: LiquidGlassLabelMode.selected,
           textDirection: direction,
         );
+        final glass = tester.getRect(find.byType(GlassSurface)).center.dy;
         final before = tester.getRect(find.byIcon(Icons.home_rounded));
-        _expectAligned(_iconCenters(tester));
+        if (index == 0) {
+          expect(before.center.dy, lessThan(glass - 2));
+        } else {
+          expect(before.center.dy, closeTo(glass, 0.75));
+        }
         _expectEqualOuterGap(tester, index: index, direction: direction);
 
         await pumpNavigationBar(
@@ -32,8 +37,11 @@ void main() {
         );
         await tester.pump(const Duration(seconds: 1));
         final after = tester.getRect(find.byIcon(Icons.home_rounded));
-        expect(after.left, closeTo(before.left, 0.5));
-        expect(after.top, closeTo(before.top, 0.5));
+        if (index == 0) {
+          expect(after.center.dy, closeTo(glass, 0.75));
+        } else {
+          expect(after.center.dy, lessThan(glass - 2));
+        }
         _expectEqualOuterGap(
           tester,
           index: index == 0 ? 2 : 0,
@@ -72,7 +80,10 @@ void main() {
   testWidgets(
     'icons share a vertical center in every label mode and stay put',
     (tester) async {
-      for (final mode in LiquidGlassLabelMode.values) {
+      for (final mode in <LiquidGlassLabelMode>[
+        LiquidGlassLabelMode.always,
+        LiquidGlassLabelMode.hidden,
+      ]) {
         await pumpNavigationBar(
           tester,
           items: sampleItems(),
@@ -90,12 +101,48 @@ void main() {
           onIndexChanged: (_) {},
           labelMode: mode,
         );
+        await tester.pump(const Duration(seconds: 1));
         final after = _iconCenters(tester);
         _expectAligned(after);
         for (var i = 0; i < before.length; i++) {
           expect(after[i], closeTo(before[i], 0.5));
         }
       }
+
+      await pumpNavigationBar(
+        tester,
+        items: sampleItems(),
+        currentIndex: 0,
+        onIndexChanged: (_) {},
+        labelMode: LiquidGlassLabelMode.selected,
+      );
+      await tester.pump(const Duration(seconds: 1));
+      final glass = tester.getRect(find.byType(GlassSurface)).center.dy;
+      final home = tester.getRect(find.byIcon(Icons.home_rounded)).center.dy;
+      final search = tester
+          .getRect(find.byIcon(Icons.search_rounded))
+          .center
+          .dy;
+      expect(home, lessThan(glass - 2));
+      expect(search, closeTo(glass, 0.75));
+
+      await pumpNavigationBar(
+        tester,
+        items: sampleItems(),
+        currentIndex: 2,
+        onIndexChanged: (_) {},
+        labelMode: LiquidGlassLabelMode.selected,
+      );
+      await tester.pump(const Duration(seconds: 1));
+      final glassAfter = tester.getRect(find.byType(GlassSurface)).center.dy;
+      expect(
+        tester.getRect(find.byIcon(Icons.home_rounded)).center.dy,
+        closeTo(glassAfter, 0.75),
+      );
+      expect(
+        tester.getRect(find.byIcon(Icons.inbox_outlined)).center.dy,
+        lessThan(glassAfter - 2),
+      );
     },
   );
 
@@ -108,7 +155,6 @@ void main() {
         LiquidGlassNavigationItem(icon: Icons.inbox_outlined, label: 'Inbox'),
       ];
       for (final mode in <LiquidGlassLabelMode>[
-        LiquidGlassLabelMode.selected,
         LiquidGlassLabelMode.always,
         LiquidGlassLabelMode.hidden,
       ]) {
@@ -121,6 +167,27 @@ void main() {
         );
         _expectAligned(_iconCenters(tester));
       }
+
+      await pumpNavigationBar(
+        tester,
+        items: items,
+        currentIndex: 2,
+        onIndexChanged: (_) {},
+        labelMode: LiquidGlassLabelMode.selected,
+      );
+      final glass = tester.getRect(find.byType(GlassSurface)).center.dy;
+      expect(
+        tester.getRect(find.byIcon(Icons.home_rounded)).center.dy,
+        closeTo(glass, 0.75),
+      );
+      expect(
+        tester.getRect(find.byIcon(Icons.search_rounded)).center.dy,
+        closeTo(glass, 0.75),
+      );
+      expect(
+        tester.getRect(find.byIcon(Icons.inbox_outlined)).center.dy,
+        lessThan(glass - 2),
+      );
     },
   );
 
@@ -165,7 +232,19 @@ void main() {
         labelMode: LiquidGlassLabelMode.selected,
         textScale: 1.6,
       );
-      _expectAligned(_iconCenters(tester));
+      final glass = tester.getRect(find.byType(GlassSurface)).center.dy;
+      expect(
+        tester.getRect(find.byIcon(Icons.home_rounded)).center.dy,
+        closeTo(glass, 0.75),
+      );
+      expect(
+        tester.getRect(find.byIcon(Icons.inbox_outlined)).center.dy,
+        closeTo(glass, 0.75),
+      );
+      expect(
+        tester.getRect(find.byIcon(Icons.search_rounded)).center.dy,
+        lessThan(glass - 2),
+      );
       final render = indicatorRender(tester);
       final indicator = _global(tester, render.debugIndicatorRect!);
       final slot = _global(tester, render.debugItemRects[1]);
@@ -231,6 +310,7 @@ void main() {
         onIndexChanged: (_) {},
         labelMode: LiquidGlassLabelMode.selected,
       );
+      final glass = tester.getRect(find.byType(GlassSurface)).center.dy;
       final home = tester.getRect(find.byIcon(Icons.home_rounded)).center.dy;
       final avatarRect = tester.getRect(find.byKey(const Key('avatar')));
       final avatar = avatarRect.center.dy;
@@ -238,8 +318,9 @@ void main() {
           .getRect(find.byIcon(Icons.search_rounded))
           .center
           .dy;
-      expect(avatar, closeTo(home, 0.5));
-      expect(search, closeTo(home, 0.5));
+      expect(home, closeTo(glass, 0.75));
+      expect(search, closeTo(glass, 0.75));
+      expect(avatar, lessThan(glass - 2));
 
       final indicator = _global(
         tester,
@@ -290,11 +371,27 @@ void main() {
 
       await show(0);
       final home = indicatorRender(tester).debugIndicatorRect!;
-      final homeIcons = _iconCenters(tester);
+      final homeStart = tester
+          .getRect(find.byIcon(Icons.home_rounded))
+          .center
+          .dy;
+      final archiveStart = tester
+          .getRect(find.byIcon(Icons.inbox_outlined))
+          .center
+          .dy;
 
       await show(2);
-      expect(_iconCenters(tester), homeIcons);
       await tester.pump(const Duration(milliseconds: 120));
+      final homeMoving = tester
+          .getRect(find.byIcon(Icons.home_rounded))
+          .center
+          .dy;
+      final archiveMoving = tester
+          .getRect(find.byIcon(Icons.inbox_outlined))
+          .center
+          .dy;
+      expect(homeMoving, greaterThan(homeStart + 0.5));
+      expect(archiveMoving, lessThan(archiveStart - 0.5));
       final moving = indicatorRender(tester);
       final movingRect = moving.debugIndicatorRect!;
       expect(movingRect.width, greaterThan(home.width + 8));
@@ -320,7 +417,12 @@ void main() {
       final capsule = _global(tester, settledRect);
       _expectContains(capsule, label);
       expect(label.top, greaterThan(archiveIcon.center.dy));
-      expect(_iconCenters(tester), homeIcons);
+      final settledGlass = tester.getRect(find.byType(GlassSurface)).center.dy;
+      expect(archiveIcon.center.dy, lessThan(settledGlass - 2));
+      expect(
+        tester.getRect(find.byIcon(Icons.home_rounded)).center.dy,
+        closeTo(settledGlass, 0.75),
+      );
     },
   );
 
@@ -655,7 +757,7 @@ void main() {
     }
   });
 
-  testWidgets('label modes share bar height, icon line, and capsule height', (
+  testWidgets('label modes keep the bar height and center visible content', (
     tester,
   ) async {
     const labels = <String>['Home', 'Search', 'Inbox', 'Saved', 'Profile'];
@@ -716,9 +818,6 @@ void main() {
           index,
           direction: direction,
         );
-        if (index == 0 || index == labels.length - 1) {
-          _expectEqualOuterGap(tester, index: index, direction: direction);
-        }
         final selected = await measure(
           LiquidGlassLabelMode.selected,
           index,
@@ -727,9 +826,16 @@ void main() {
 
         expect(hidden.glass, closeTo(always.glass, 0.5));
         expect(selected.glass, closeTo(always.glass, 0.5));
-        expect(hidden.icon.center.dy, closeTo(always.icon.center.dy, 0.5));
+        final glass = tester.getRect(find.byType(GlassSurface));
+        expect(hidden.icon.center.dy, closeTo(glass.center.dy, 0.75));
+        expect(hidden.capsule.center.dy, closeTo(glass.center.dy, 0.75));
+        expect(
+          hidden.capsule.top - glass.top,
+          closeTo(glass.bottom - hidden.capsule.bottom, 0.75),
+        );
+        expect(hidden.icon.center.dy, greaterThan(always.icon.center.dy + 2));
         expect(selected.icon.center.dy, closeTo(always.icon.center.dy, 0.5));
-        expect(hidden.capsule.height, closeTo(always.capsule.height, 0.5));
+        expect(hidden.capsule.height, lessThan(always.capsule.height - 4));
         expect(selected.capsule.height, closeTo(always.capsule.height, 0.5));
         expect(selected.capsule.width, closeTo(always.capsule.width, 0.5));
         expect(hidden.capsule.width, greaterThan(hidden.capsule.height * 1.3));
@@ -751,6 +857,22 @@ void main() {
           final label = tester.getRect(find.text(labels[index]));
           _expectContains(selected.capsule, label);
           expect(label.right, lessThanOrEqualTo(selected.capsule.right + 0.5));
+          final group = (selected.icon.top + label.bottom) / 2;
+          expect(group, closeTo(selected.capsule.center.dy, 1.5));
+          expect(selected.capsule.center.dy, closeTo(glass.center.dy, 0.75));
+          expect(
+            selected.icon.center.dy,
+            lessThan(selected.capsule.center.dy - 2),
+          );
+        }
+        if (index == 0 || index == labels.length - 1) {
+          final outerOnLeft = direction == TextDirection.ltr
+              ? index == 0
+              : index != 0;
+          final side = outerOnLeft
+              ? hidden.capsule.left - glass.left
+              : glass.right - hidden.capsule.right;
+          expect(side, closeTo(hidden.capsule.top - glass.top, 0.75));
         }
         if (index == 2) {
           expect(hidden.icon.center.dx, closeTo(always.icon.center.dx, 0.5));
@@ -762,7 +884,8 @@ void main() {
     final before = await measure(LiquidGlassLabelMode.always, 2);
     final switched = await measure(LiquidGlassLabelMode.hidden, 2);
     final back = await measure(LiquidGlassLabelMode.selected, 2);
-    expect(switched.icon.center.dy, closeTo(before.icon.center.dy, 0.5));
+    final switchedGlass = tester.getRect(find.byType(GlassSurface)).center.dy;
+    expect(switched.icon.center.dy, closeTo(switchedGlass, 0.75));
     expect(back.icon.center.dy, closeTo(before.icon.center.dy, 0.5));
     expect(switched.icon.center.dx, closeTo(before.icon.center.dx, 0.5));
     expect(back.icon.center.dx, closeTo(before.icon.center.dx, 0.5));
@@ -770,12 +893,13 @@ void main() {
     final selectedHome = await measure(LiquidGlassLabelMode.selected, 0);
     final selectedProfile = await measure(LiquidGlassLabelMode.selected, 4);
     final homeAgain = tester.getRect(find.byIcon(Icons.home_rounded));
-    expect(homeAgain.center.dx, closeTo(selectedHome.icon.center.dx, 0.5));
-    expect(homeAgain.center.dy, closeTo(selectedHome.icon.center.dy, 0.5));
+    final profileGlass = tester.getRect(find.byType(GlassSurface)).center.dy;
+    expect(homeAgain.center.dy, closeTo(profileGlass, 0.75));
     expect(
       tester.getRect(find.byIcon(Icons.person_rounded)).center.dy,
       closeTo(selectedProfile.icon.center.dy, 0.5),
     );
+    expect(selectedHome.icon.center.dy, lessThan(profileGlass - 2));
 
     final large = style.copyWith(iconSize: 32);
     final largeAlways = await measure(
@@ -791,11 +915,11 @@ void main() {
     expect(largeHidden.glass, closeTo(largeAlways.glass, 0.5));
     expect(
       largeHidden.icon.center.dy,
-      closeTo(largeAlways.icon.center.dy, 0.5),
+      greaterThan(largeAlways.icon.center.dy + 2),
     );
     expect(
       largeHidden.capsule.height,
-      closeTo(largeAlways.capsule.height, 0.5),
+      lessThan(largeAlways.capsule.height - 4),
     );
 
     final scaledAlways = await measure(
@@ -815,7 +939,7 @@ void main() {
     );
     expect(
       scaledHidden.icon.center.dy,
-      closeTo(scaledAlways.icon.center.dy, 0.5),
+      greaterThan(scaledAlways.icon.center.dy + 2),
     );
     expect(
       scaledSelected.icon.center.dy,
@@ -823,7 +947,7 @@ void main() {
     );
     expect(
       scaledHidden.capsule.height,
-      closeTo(scaledAlways.capsule.height, 0.5),
+      lessThan(scaledAlways.capsule.height - 4),
     );
     expect(
       scaledSelected.capsule.height,

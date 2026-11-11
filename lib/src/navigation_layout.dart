@@ -827,8 +827,8 @@ class RenderLiquidNavigation extends RenderBox
   }
 }
 
-/// Shared icon line. The capsule's vertical bounds follow this box, not the
-/// label under it.
+/// Icon band inside a destination. The capsule follows the whole column,
+/// including a visible label, not this box alone.
 abstract class RenderIconAnchor extends RenderBox {}
 
 /// Badge paint that must not widen or shift the selection capsule.

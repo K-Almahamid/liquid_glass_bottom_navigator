@@ -20,6 +20,9 @@ class LiquidNavigationItemView extends StatelessWidget {
     required this.selected,
     required this.labelMode,
     required this.reserveLabelLine,
+    required this.labelAnimation,
+    required this.labelFrom,
+    required this.labelTo,
     required this.style,
     required this.theme,
     required this.onTap,
@@ -43,9 +46,20 @@ class LiquidNavigationItemView extends StatelessWidget {
 
   /// Whether every item keeps a label line under the icon.
   ///
-  /// True when this bar can show a label. Icon-only destinations keep the
-  /// same line so their icons stay on the shared center.
+  /// True in [LiquidGlassLabelMode.always] when any destination has a label.
+  ///
+  /// Icon-only destinations in that mode keep the band so every icon stays on
+  /// one line. The other modes do not reserve it.
   final bool reserveLabelLine;
+
+  /// Selection spring. Selected-only labels grow and fade with this value.
+  final Animation<double> labelAnimation;
+
+  /// Destination that was selected when the current spring started.
+  final int? labelFrom;
+
+  /// Destination the current spring is settling on.
+  final int? labelTo;
 
   /// Shared dimensions.
   final LiquidGlassNavigationStyle style;
@@ -105,7 +119,11 @@ class LiquidNavigationItemView extends StatelessWidget {
             ? null
             : Icon(item.icon, size: style.iconSize, color: foreground));
     final badge = item.badge;
-    final labelHeight = reserveLabelLine
+    final revealLabel =
+        labelMode == LiquidGlassLabelMode.selected &&
+        label != null &&
+        label.isNotEmpty;
+    final labelHeight = reserveLabelLine || revealLabel
         ? _labelSlotHeight(context, foreground)
         : 0.0;
     final direction = Directionality.of(context);
@@ -167,7 +185,31 @@ class LiquidNavigationItemView extends StatelessWidget {
                         ),
                       ),
               ),
-            ],
+            ] else if (revealLabel)
+              _LabelSlot(
+                animation: labelAnimation,
+                index: index,
+                fromIndex: labelFrom,
+                toIndex: labelTo,
+                bandWidth: _labelSlotWidth(context, label, foreground),
+                bandHeight: style.labelSpacing + labelHeight,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    SizedBox(height: style.labelSpacing),
+                    SizedBox(
+                      height: labelHeight,
+                      child: Text(
+                        label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                        style: _labelStyle(foreground),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
           ],
         ),
       ),
@@ -280,20 +322,233 @@ class LiquidNavigationItemView extends StatelessWidget {
   }
 }
 
+/// Grows the selected-only label with the bar's selection spring.
+///
+/// The slot reports a fraction of the full label band, so the icon column
+/// moves with the same animation as the capsule. At rest an unselected slot
+/// has zero size and does not shift the icon. Paint is clipped to the
+/// capsule that is already drawn this frame, so a growing label cannot
+/// appear outside the bubble while the capsule is still traveling.
+class _LabelSlot extends SingleChildRenderObjectWidget {
+  const _LabelSlot({
+    required this.animation,
+    required this.index,
+    required this.fromIndex,
+    required this.toIndex,
+    required this.bandWidth,
+    required this.bandHeight,
+    super.child,
+  });
+
+  final Animation<double> animation;
+  final int index;
+  final int? fromIndex;
+  final int? toIndex;
+  final double bandWidth;
+  final double bandHeight;
+
+  @override
+  RenderObject createRenderObject(BuildContext context) {
+    return _RenderLabelSlot(
+      animation: animation,
+      index: index,
+      fromIndex: fromIndex,
+      toIndex: toIndex,
+      bandWidth: bandWidth,
+      bandHeight: bandHeight,
+    );
+  }
+
+  @override
+  void updateRenderObject(BuildContext context, _RenderLabelSlot renderObject) {
+    renderObject
+      ..animation = animation
+      ..index = index
+      ..bandWidth = bandWidth
+      ..bandHeight = bandHeight
+      ..setMotion(fromIndex, toIndex);
+  }
+}
+
+class _RenderLabelSlot extends RenderProxyBox {
+  _RenderLabelSlot({
+    required this._animation,
+    required this._index,
+    required this._fromIndex,
+    required this._toIndex,
+    required this._bandWidth,
+    required this._bandHeight,
+  });
+
+  Animation<double> _animation;
+  int _index;
+  int? _fromIndex;
+  int? _toIndex;
+  double _bandWidth;
+  double _bandHeight;
+
+  /// Reveal at the start of the current spring, so a second tap mid-flight
+  /// continues from the visible label instead of jumping.
+  double _startFactor = 0;
+  double _displayed = 0;
+
+  set animation(Animation<double> value) {
+    if (identical(_animation, value)) {
+      return;
+    }
+    if (attached) {
+      _animation.removeListener(_onTick);
+    }
+    _animation = value;
+    if (attached) {
+      _animation.addListener(_onTick);
+    }
+  }
+
+  set index(int value) {
+    if (_index == value) {
+      return;
+    }
+    _index = value;
+    markNeedsLayout();
+  }
+
+  set bandWidth(double value) {
+    if (_bandWidth == value) {
+      return;
+    }
+    _bandWidth = value;
+    markNeedsLayout();
+  }
+
+  set bandHeight(double value) {
+    if (_bandHeight == value) {
+      return;
+    }
+    _bandHeight = value;
+    markNeedsLayout();
+  }
+
+  void setMotion(int? from, int? to) {
+    if (_fromIndex == from && _toIndex == to) {
+      return;
+    }
+    _startFactor = _displayed;
+    _fromIndex = from;
+    _toIndex = to;
+    markNeedsLayout();
+  }
+
+  @override
+  void attach(PipelineOwner owner) {
+    super.attach(owner);
+    _animation.addListener(_onTick);
+  }
+
+  @override
+  void detach() {
+    _animation.removeListener(_onTick);
+    super.detach();
+  }
+
+  void _onTick() {
+    markNeedsLayout();
+  }
+
+  double _factor() {
+    final target = _index == _toIndex ? 1.0 : 0.0;
+    if (_fromIndex == null) {
+      return target;
+    }
+    final t = _animation.value.clamp(0.0, 1.0);
+    return _startFactor + (target - _startFactor) * t;
+  }
+
+  @override
+  void performLayout() {
+    final factor = _factor().clamp(0.0, 1.0);
+    _displayed = factor;
+    final child = this.child;
+    final maxWidth = constraints.maxWidth.isFinite
+        ? constraints.maxWidth
+        : math.max(0.0, _bandWidth);
+    final width = math.min(math.max(0.0, _bandWidth), maxWidth);
+    final height = math.max(0.0, _bandHeight);
+    if (child == null) {
+      size = constraints.constrain(Size.zero);
+      return;
+    }
+    child.layout(
+      BoxConstraints.tightFor(width: width, height: height),
+      parentUsesSize: true,
+    );
+    size = constraints.constrain(Size(width * factor, height * factor));
+  }
+
+  @override
+  void paint(PaintingContext context, Offset offset) {
+    final child = this.child;
+    if (child == null || _displayed <= 0.001 || size.isEmpty) {
+      return;
+    }
+    final alpha = (_displayed * 255).round().clamp(0, 255);
+    var clip = Offset.zero & size;
+    final capsule = _capsuleInLocal();
+    if (capsule != null) {
+      clip = clip.intersect(capsule);
+    }
+    if (clip.isEmpty) {
+      return;
+    }
+    final shift = Offset((size.width - child.size.width) / 2, 0);
+    context.pushClipRect(true, offset, clip, (
+      PaintingContext context,
+      Offset offset,
+    ) {
+      context.pushOpacity(offset, alpha, (
+        PaintingContext context,
+        Offset offset,
+      ) {
+        context.paintChild(child, offset + shift);
+      });
+    });
+  }
+
+  /// Capsule painted by the row this frame, in this box's coordinates.
+  Rect? _capsuleInLocal() {
+    var node = parent;
+    RenderLiquidNavigation? row;
+    while (node != null) {
+      if (node is RenderLiquidNavigation) {
+        row = node;
+        break;
+      }
+      node = node.parent;
+    }
+    final painted = row?.debugIndicatorRect;
+    if (row == null || painted == null) {
+      return null;
+    }
+    final topLeft = globalToLocal(row.localToGlobal(painted.topLeft));
+    final bottomRight = globalToLocal(row.localToGlobal(painted.bottomRight));
+    return Rect.fromPoints(topLeft, bottomRight);
+  }
+}
+
 /// Where a destination sits inside its slot.
 enum _SlotAnchor { start, center, end }
 
 /// Places the icon and label cluster.
 ///
-/// Every destination uses the same column, so icons stay on one line. When a
-/// label line is reserved, that column is the icon plus the label band, even
-/// if the label is not painted. The column is placed so the capsule around it
-/// has the same gap above, below, and, for the first and last destinations,
-/// on the outer side. [breathX] and [breathY] are those capsule margins. An
-/// icon-sized column is treated as wider when the capsule would otherwise be
-/// round, and the icon stays centered in that width.
-/// [iconExtent] is the shared icon-line height. A column that does not fit
-/// the inset stays inside the slot.
+/// The column is whatever this destination is showing: icon and label in
+/// all-labels mode, the icon alone in icons-only mode, and in selected-only
+/// mode the icon plus a label band that grows with the selection spring.
+/// The column is placed so the capsule around it has the same gap above,
+/// below, and, for the first and last destinations, on the outer side.
+/// [breathX] and [breathY] are those capsule margins. An icon-sized column
+/// is treated as wider when the capsule would otherwise be round, and the
+/// icon stays centered in that width. [iconExtent] is the icon-band height.
+/// A column that does not fit the inset stays inside the slot.
 class _ClusterFrame extends SingleChildRenderObjectWidget {
   const _ClusterFrame({
     required this.anchor,
@@ -492,8 +747,8 @@ class _RenderClusterFrame extends RenderBox
     final breathY = room <= 0 ? 0.0 : math.min(_breathY, room);
     final capsuleHeight = column + breathY * 2;
     final gap = math.max(0.0, (glassHeight - capsuleHeight) / 2);
-    // Place the whole column, not the icon alone. Every item in this bar has
-    // the same column height, so the icon line does not move with selection.
+    // Place the whole column, not the icon alone. A taller column (an icon
+    // with its label) sits higher so the group, not the icon, is centered.
     final dy = column >= glassHeight
         ? (glassHeight - column) / 2 - _barPadding.top
         : gap + breathY - _barPadding.top;
@@ -600,7 +855,7 @@ class _RenderClusterFrame extends RenderBox
 /// Fixed-height icon slot.
 ///
 /// The slot width follows the visual. A taller custom child stays centered
-/// on the shared icon line and may paint outside the slot.
+/// in the slot and may paint outside it. The slot moves with the column.
 class _IconBand extends SingleChildRenderObjectWidget {
   const _IconBand({required this.height, super.child});
 

@@ -141,6 +141,13 @@ class _LiquidGlassNavigationBarState extends State<LiquidGlassNavigationBar>
   /// Last preview center, so a reverse move updates direction immediately.
   double? _lastPreviewCenter;
 
+  /// Index whose label was showing before the current selection spring.
+  ///
+  /// [currentIndex] flips as soon as the parent rebuilds, while the spring is
+  /// still at the previous item. Selected-only labels read this so the old
+  /// icon can settle down and the new one can rise with that same spring.
+  int? _labelFrom;
+
   /// Smoothed drag direction, from -1 (left) through 0 (neutral) to 1 (right).
   ///
   /// The value eases toward the latest movement and decays when the finger
@@ -206,6 +213,11 @@ class _LiquidGlassNavigationBarState extends State<LiquidGlassNavigationBar>
     }
     // Parent index and item count win over an in-flight preview.
     _endDragTracking();
+    if (itemsChanged) {
+      _labelFrom = null;
+    } else if (indexChanged) {
+      _labelFrom = _indexOf(oldWidget);
+    }
     final render = _render;
     if (render == null) {
       return;
@@ -218,6 +230,13 @@ class _LiquidGlassNavigationBarState extends State<LiquidGlassNavigationBar>
     }
     render.beginTransition(_effectiveIndex);
     _runMotion();
+  }
+
+  int? _indexOf(LiquidGlassNavigationBar bar) {
+    if (bar.currentIndex < 0 || bar.currentIndex >= bar.items.length) {
+      return null;
+    }
+    return bar.currentIndex;
   }
 
   bool _resolveReducedMotion() {
@@ -503,9 +522,12 @@ class _LiquidGlassNavigationBarState extends State<LiquidGlassNavigationBar>
       width = width.clamp(minWidth, maxWidth).toDouble();
     }
 
-    // Hidden labels still occupy the line, so the icon and the capsule height
-    // match the modes that paint labels. The text itself is not built.
-    final reserveLabelLine = widget.items.any(_hasLabel);
+    // All-labels mode keeps one label band on every destination, including
+    // destinations that have no label, so those icons stay on one line.
+    // Icons-only and unselected selected-only items do not reserve that band.
+    final reserveLabelLine =
+        widget.labelMode == LiquidGlassLabelMode.always &&
+        widget.items.any(_hasLabel);
     final layoutChild = LiquidNavigationLayout(
       key: _layoutKey,
       targetIndex: _effectiveIndex,
@@ -533,6 +555,9 @@ class _LiquidGlassNavigationBarState extends State<LiquidGlassNavigationBar>
             selected: i == _effectiveIndex,
             labelMode: widget.labelMode,
             reserveLabelLine: reserveLabelLine,
+            labelAnimation: _controller,
+            labelFrom: _labelFrom,
+            labelTo: _effectiveIndex,
             style: style,
             theme: theme,
             onTap: () => _handleTap(i),

@@ -1,27 +1,30 @@
 /// How item labels are shown inside [LiquidGlassNavigationBar].
 ///
-/// Items without a label stay valid in every mode. The bar reserves the label
-/// line whenever any item has a label, including [hidden]. That keeps one icon
-/// line and one capsule height. [hidden] does not paint the label, so the
-/// capsule width follows the icon and stays a horizontal pill. Changing the
-/// selection does not change the bar height.
+/// Items without a label stay valid in every mode. The bar height does not
+/// change with the mode or the selection. Icon positions do: [hidden] centers
+/// every icon in the glass, and [selected] centers unselected icons while the
+/// selected icon rises to make room for its label.
 enum LiquidGlassLabelMode {
   /// Hide every label, including items that provide one.
   ///
-  /// The label line stays in the layout so the icon and the capsule height
-  /// match [always]. The capsule width follows the icon. Spoken labels stay
-  /// on the semantics node.
+  /// No label band is reserved. Every icon, including the selected one, is
+  /// centered in the glass, and the capsule is centered on that icon. The
+  /// capsule stays a horizontal pill. Spoken labels stay on the semantics node.
   hidden,
 
   /// Show every item that provides a label.
   ///
-  /// The selected capsule wraps that item's icon and label.
+  /// Each icon and label is centered as one group. The selected capsule wraps
+  /// that icon and label. Icons in this mode share one vertical line.
   always,
 
-  /// Show a label only on the selected item. Other labels keep their layout
-  /// space and are not visible, so the icon line does not move.
+  /// Show a label only on the selected item.
   ///
-  /// The selected capsule wraps that item's icon and label.
+  /// Unselected icons are centered in the glass. The selected icon moves up,
+  /// the label appears under it, and that icon-plus-label group stays centered
+  /// in the capsule and in the glass. The move follows the selection spring.
+  /// A drag preview does not show a label on a destination the parent has not
+  /// adopted.
   selected,
 }
 

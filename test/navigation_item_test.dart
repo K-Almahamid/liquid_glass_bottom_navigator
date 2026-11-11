@@ -2,6 +2,7 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:liquid_glass_bottom_navigator/src/glass_surface.dart';
 import 'package:liquid_glass_bottom_navigator/src/item.dart';
 
 import 'harness.dart';
@@ -160,14 +161,18 @@ void main() {
       expect(find.text('Inbox'), findsOneWidget);
 
       await pump(LiquidGlassLabelMode.selected);
-      final homeOpacity = tester.widget<Opacity>(
-        find.ancestor(of: find.text('Home'), matching: find.byType(Opacity)),
+      await tester.pump(const Duration(seconds: 1));
+      final glass = tester.getRect(find.byType(GlassSurface)).center.dy;
+      expect(
+        tester.getRect(find.byIcon(Icons.home_rounded)).center.dy,
+        closeTo(glass, 0.75),
       );
-      final searchOpacity = tester.widget<Opacity>(
-        find.ancestor(of: find.text('Search'), matching: find.byType(Opacity)),
+      expect(
+        tester.getRect(find.byIcon(Icons.search_rounded)).center.dy,
+        lessThan(glass - 2),
       );
-      expect(homeOpacity.opacity, 0);
-      expect(searchOpacity.opacity, 1);
+      expect(find.text('Search'), findsOneWidget);
+      expect(tester.getRect(find.text('Search')).height, greaterThan(0));
     },
   );
 
