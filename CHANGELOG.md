@@ -3,8 +3,10 @@
 * Adds `enableDragSelection`. It defaults to false, so 1.0.0 callers stay tap-only.
 * When dragging is enabled, a horizontal drag from the selected destination moves the liquid indicator. `onIndexChanged` runs once on release over a different destination. Gaps and misses spring back. `currentIndex` stays parent-owned.
 * Dragging respects RTL slot geometry, reduced motion, haptic settings, and both indicator styles. Pointer movement repaints the indicator and does not rebuild the items.
-* The selection capsule hugs the selected icon, label, badge, and custom child instead of filling the slot. `indicatorInset` is the even breathing room around that content. The smallest side is used, and a short bar reduces it so the content still fits.
-* At the first and last destinations, the gap from the capsule to the glass is the same on the top, the bottom, and the outer side. The default glass padding is 6 on every side. A slot that is too narrow to hold that inset keeps the capsule inside the slot.
+* The selection capsule hugs the selected icon, label, badge, and custom child instead of filling the slot. `indicatorInset` sets the horizontal and vertical margins separately. The default is 10 by 3, so the pill is flat and a little wide. A short bar reduces the vertical margin so the content still fits.
+* At the first and last destinations, the gap from the capsule to the glass is the same on the top, the bottom, and the outer side. The default glass padding is 6 on every side. The default glass height is 58 and the default `maxWidth` is 340. Pass `double.infinity` for a full-width bar. A slot that is too narrow to hold the inset keeps the capsule inside the slot.
+* A drag preview follows the finger continuously, including a reverse in the same gesture. Stretch grows both sides of the grabbed center, and the droplet points in the latest direction of movement. Width eases between destination capsules instead of stepping at slot edges.
+* The default badge sits on the icon. `badgeOffset` is `(2, 8)`.
 * Navigation icons share one vertical center. Showing or hiding a label, or changing the selected destination, does not move them. The label sits under that center.
 
 ## 1.0.0

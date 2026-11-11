@@ -1,10 +1,36 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:liquid_glass_bottom_navigator/src/glass_surface.dart';
 import 'package:liquid_glass_bottom_navigator/src/navigation_layout.dart';
 
 import 'harness.dart';
 
 void main() {
+  testWidgets('the default bar width stops at 340', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Align(
+            alignment: Alignment.bottomCenter,
+            child: LiquidGlassNavigationBar(
+              items: sampleItems(),
+              currentIndex: 0,
+              onIndexChanged: (_) {},
+              style: const LiquidGlassNavigationStyle(
+                margin: EdgeInsets.zero,
+                respectSafeArea: false,
+                blurSigma: 0,
+                elevation: 0,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    expect(tester.getSize(find.byType(GlassSurface)).width, closeTo(340, 0.5));
+  });
+
   testWidgets('adaptive theme follows brightness and explicit themes do not', (
     tester,
   ) async {

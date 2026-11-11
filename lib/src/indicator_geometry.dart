@@ -18,8 +18,11 @@ int? liquidSlotAt(List<Rect> slots, Offset point) {
 ///
 /// [slots] are the resting indicator rectangles. [centerX] is the finger
 /// position minus the grab offset from pointer-down, so the capsule does not
-/// jump onto the finger. [stretch] adds the liquid leading/trailing growth.
-/// Reduced motion passes `stretch: false`.
+/// jump onto the finger. [movingRight] is the latest finger direction. When
+/// it is null, direction falls back to which side of [origin] [centerX] is
+/// on. [stretch] grows the capsule equally on both sides so a direction
+/// change does not jump the grabbed center. Reduced motion passes
+/// `stretch: false`.
 class LiquidDragPlacement {
   /// Creates a drag placement.
   const LiquidDragPlacement({
@@ -45,6 +48,7 @@ LiquidDragPlacement liquidDragPlacement({
   required double centerX,
   required bool stretch,
   required double morphIntensity,
+  bool? movingRight,
 }) {
   final width = _widthAt(slots, centerX, origin.width);
   final height = origin.height;
@@ -56,18 +60,20 @@ LiquidDragPlacement liquidDragPlacement({
   final top = origin.center.dy - height / 2;
   var rect = Rect.fromLTWH(cx - half, top, width, height);
   final delta = cx - origin.center.dx;
-  final travelRight = delta >= 0;
+  final travelRight = movingRight ?? delta >= 0;
   final intensity = morphIntensity.clamp(0.0, 1.0);
   if (!stretch || intensity <= 0 || delta.abs() < 1) {
     return LiquidDragPlacement(rect: rect, blob: 0, travelRight: travelRight);
   }
   final cap = rect.width * 0.85;
-  final extra = math.min(delta.abs() * 0.4, cap) * intensity;
-  final leading = extra * 0.72;
-  final trailing = extra * 0.28;
-  final left = travelRight ? rect.left - trailing : rect.left - leading;
-  final right = travelRight ? rect.right + leading : rect.right + trailing;
-  rect = Rect.fromLTRB(left, rect.top, math.max(left, right), rect.bottom);
+  final extra = math.min(delta.abs() * 0.35, cap) * intensity;
+  final grow = extra / 2;
+  rect = Rect.fromLTRB(
+    rect.left - grow,
+    rect.top,
+    rect.right + grow,
+    rect.bottom,
+  );
   final blob = cap <= 0 ? 0.0 : (extra / cap).clamp(0.0, 1.0);
   return LiquidDragPlacement(rect: rect, blob: blob, travelRight: travelRight);
 }
@@ -86,27 +92,30 @@ Rect _slotBounds(List<Rect> slots, Rect origin) {
   return Rect.fromLTRB(left, top, right, bottom);
 }
 
+/// Width follows the finger between capsule centers, including while it is
+/// still inside a slot. Snapping only at slot edges made a reverse drag feel
+/// stuck until the finger crossed back out.
 double _widthAt(List<Rect> slots, double x, double fallback) {
   if (slots.isEmpty) {
     return fallback;
   }
   final ordered = List<Rect>.of(slots)
-    ..sort((a, b) => a.left.compareTo(b.left));
-  for (final slot in ordered) {
-    if (x >= slot.left && x <= slot.right) {
-      return slot.width;
-    }
+    ..sort((a, b) => a.center.dx.compareTo(b.center.dx));
+  if (x <= ordered.first.center.dx) {
+    return ordered.first.width;
+  }
+  if (x >= ordered.last.center.dx) {
+    return ordered.last.width;
   }
   for (var i = 0; i < ordered.length - 1; i++) {
     final a = ordered[i];
     final b = ordered[i + 1];
-    if (x > a.right && x < b.left && b.left > a.right) {
-      final t = (x - a.right) / (b.left - a.right);
-      return a.width + (b.width - a.width) * t;
+    final span = b.center.dx - a.center.dx;
+    if (span <= 0 || x > b.center.dx) {
+      continue;
     }
-  }
-  if (x < ordered.first.left) {
-    return ordered.first.width;
+    final t = (x - a.center.dx) / span;
+    return a.width + (b.width - a.width) * t;
   }
   return ordered.last.width;
 }

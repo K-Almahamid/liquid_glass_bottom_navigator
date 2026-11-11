@@ -138,6 +138,10 @@ class _LiquidGlassNavigationBarState extends State<LiquidGlassNavigationBar>
   Rect? _dragOrigin;
   double _grabDx = 0;
 
+  /// Last preview center, so a reverse move updates direction immediately.
+  double? _lastPreviewCenter;
+  bool _movingRight = true;
+
   RenderLiquidNavigation? get _render {
     final object = _layoutKey.currentContext?.findRenderObject();
     if (object is RenderLiquidNavigation) {
@@ -245,6 +249,7 @@ class _LiquidGlassNavigationBarState extends State<LiquidGlassNavigationBar>
     _dragOrigin = null;
     _pointer = null;
     _downLocal = null;
+    _lastPreviewCenter = null;
   }
 
   /// Records the grab offset only when the pointer starts on the selection.
@@ -275,6 +280,8 @@ class _LiquidGlassNavigationBarState extends State<LiquidGlassNavigationBar>
     _dragArmed = true;
     _dragOrigin = origin;
     _grabDx = event.localPosition.dx - origin.center.dx;
+    _lastPreviewCenter = origin.center.dx;
+    _movingRight = true;
   }
 
   void _onPointerMove(PointerMoveEvent event) {
@@ -329,12 +336,19 @@ class _LiquidGlassNavigationBarState extends State<LiquidGlassNavigationBar>
       _dragging = true;
       _controller.stop();
     }
+    final centerX = local.dx - _grabDx;
+    final previous = _lastPreviewCenter;
+    if (previous != null && (centerX - previous).abs() > 0.5) {
+      _movingRight = centerX > previous;
+    }
+    _lastPreviewCenter = centerX;
     final placement = liquidDragPlacement(
       slots: render.indicatorRects,
       origin: origin,
-      centerX: local.dx - _grabDx,
+      centerX: centerX,
       stretch: _canStretch,
       morphIntensity: widget.motion.morphIntensity,
+      movingRight: _movingRight,
     );
     render.showDrag(
       placement.rect,
@@ -356,6 +370,7 @@ class _LiquidGlassNavigationBarState extends State<LiquidGlassNavigationBar>
     _dragOrigin = null;
     _pointer = null;
     _downLocal = null;
+    _lastPreviewCenter = null;
     if (render == null || !render.attached) {
       _claimedIndex = null;
       return;

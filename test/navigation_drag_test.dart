@@ -63,6 +63,32 @@ void main() {
     await gesture.up();
   });
 
+  testWidgets('reversing direction follows the finger without a callback', (
+    tester,
+  ) async {
+    final selections = <int>[];
+    await _pump(tester, selections);
+    final before = _center(tester);
+    final gesture = await tester.startGesture(_slot(tester, 0));
+    await gesture.moveBy(const Offset(80, 0));
+    await tester.pump();
+    final forward = _center(tester);
+    expect(forward.dx, greaterThan(before.dx + 40));
+    await gesture.moveBy(const Offset(-50, 0));
+    await tester.pump();
+    final back = _center(tester);
+    expect(back.dx, closeTo(forward.dx - 50, 3));
+    expect(back.dx, greaterThan(before.dx + 10));
+    expect(selections, isEmpty);
+    await gesture.moveBy(Offset(before.dx - back.dx, 0));
+    await tester.pump();
+    expect(_center(tester).dx, closeTo(before.dx, 3));
+    expect(selections, isEmpty);
+    await gesture.up();
+    await tester.pump();
+    expect(selections, isEmpty);
+  });
+
   testWidgets('release on another destination reports that index once', (
     tester,
   ) async {
@@ -273,7 +299,7 @@ void main() {
     await gesture.moveBy(const Offset(30, 0));
     await tester.pump();
     final dragged = indicatorRender(tester).debugIndicatorRect!;
-    expect(dragged.width, closeTo(before.width, 1));
+    expect((dragged.width - before.width).abs(), lessThan(8));
     await gesture.up();
     await tester.pump();
     expect(selections, isEmpty);

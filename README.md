@@ -122,12 +122,12 @@ Items without labels are valid in every mode. Icons share one vertical center. A
 
 `LiquidGlassNavigationStyle` controls size and material:
 
-- `width`, `minWidth`, and `maxWidth`
+- `width`, `minWidth`, and `maxWidth` (default max width is 340; use `double.infinity` for the full parent)
 - `height` as the minimum glass height, excluding margin
 - `maxHeight` and `expandForTextScale` for large text
 - `margin`, `padding`, `itemPadding`, and `itemSpacing` as `EdgeInsetsGeometry` where a direction matters
 - `itemLayout`: `equal` slots (default) or `intrinsic` widths. Intrinsic rows that do not fit fall back to equal slots. The indicator uses the measured slot, not a guessed width
-- `borderRadius`, `indicatorInset` (even breathing room; the smallest side wins), `indicatorRadius`
+- `borderRadius`, `indicatorInset` (horizontal and vertical capsule margins; each axis uses its smaller side), `indicatorRadius`
 - `iconSize`, label styles, and `labelSpacing`
 - `blurSigma` (zero disables the blur), `borderWidth`
 - `elevation`, with optional `shadowBlurRadius` and `shadowOffset`

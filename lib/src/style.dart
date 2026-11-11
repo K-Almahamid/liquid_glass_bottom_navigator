@@ -17,14 +17,14 @@ class LiquidGlassNavigationStyle {
   /// bar may grow for larger text up to [maxHeight]. Set
   /// [expandForTextScale] to false to lock the bar at [height].
   ///
-  /// [width] null lets the bar take the parent's maximum width after [margin].
-  /// The bar does not force a full-screen width; a narrow parent produces a
-  /// narrow bar. An unbounded parent sizes the bar to its items.
+  /// [width] null lets the bar take the parent's width after [margin], up to
+  /// [maxWidth]. A narrow parent produces a narrow bar. An unbounded parent
+  /// sizes the bar to its items.
   const LiquidGlassNavigationStyle({
     this.width,
     this.minWidth,
-    this.maxWidth,
-    this.height = 64,
+    this.maxWidth = 340,
+    this.height = 58,
     this.maxHeight,
     this.expandForTextScale = true,
     this.margin = const EdgeInsets.fromLTRB(16, 0, 16, 12),
@@ -34,8 +34,8 @@ class LiquidGlassNavigationStyle {
     this.itemLayout = LiquidGlassItemLayout.equal,
     this.borderRadius = const BorderRadius.all(Radius.circular(32)),
     this.indicatorInset = const EdgeInsets.symmetric(
-      horizontal: 6,
-      vertical: 6,
+      horizontal: 10,
+      vertical: 3,
     ),
     this.indicatorRadius = const BorderRadius.all(Radius.circular(24)),
     this.indicatorBorderWidth = 1,
@@ -51,7 +51,7 @@ class LiquidGlassNavigationStyle {
     this.shadowOffset,
     this.minTouchTarget = 48,
     this.respectSafeArea = true,
-    this.badgeOffset = const Offset(4, -2),
+    this.badgeOffset = const Offset(2, 8),
     this.badgeMinSize = 16,
     this.backgroundColor,
     this.backgroundOpacity,
@@ -85,6 +85,9 @@ class LiquidGlassNavigationStyle {
   final double? minWidth;
 
   /// Largest glass width after [margin].
+  ///
+  /// The default is 340 so a floating bar stays compact on a wide screen.
+  /// Pass [double.infinity] to let the bar use the full parent width.
   final double? maxWidth;
 
   /// Minimum outer height of the glass surface, excluding margin.
@@ -101,9 +104,9 @@ class LiquidGlassNavigationStyle {
 
   /// Space inside the glass, around the items.
   ///
-  /// The default is 6 on every side. The selection capsule uses that same
-  /// distance from the glass on the top, the bottom, and the outer side of
-  /// the first and last destinations.
+  /// The default is 6 on every side. At the first and last destinations the
+  /// capsule's distance to the glass matches on the top, the bottom, and the
+  /// outer side.
   final EdgeInsetsGeometry padding;
 
   /// Gap between item slots.
@@ -120,10 +123,13 @@ class LiquidGlassNavigationStyle {
 
   /// Breathing room around the selected icon, label, badge, and custom child.
   ///
-  /// The capsule uses the smallest side as one even margin. It does not grow
-  /// to fill the slot. At the first and last destinations, the gap from the
-  /// capsule to the glass matches the gap above and below the capsule. A
-  /// shorter bar reduces this margin so the content still fits.
+  /// Horizontal and vertical insets are independent. The smaller of the two
+  /// horizontal sides is the side margin, and the smaller of the two vertical
+  /// sides is the top and bottom margin. The default is wider than it is tall,
+  /// so the capsule stays a flat pill. It does not grow to fill the slot. At
+  /// the first and last destinations, the gap from the capsule to the glass
+  /// matches the gap above and below the capsule. A shorter bar reduces the
+  /// vertical margin so the content still fits.
   final EdgeInsetsGeometry indicatorInset;
 
   /// Corner radius of the selection capsule.
@@ -180,7 +186,8 @@ class LiquidGlassNavigationStyle {
   /// Badge shift from the top-end corner of the icon or custom child.
   ///
   /// Positive x moves toward the outside of the end edge (right in LTR, left
-  /// in RTL). Positive y moves downward.
+  /// in RTL). Positive y moves downward. The default sits on the icon, not
+  /// above it.
   final Offset badgeOffset;
 
   /// Minimum width and height of a count badge.

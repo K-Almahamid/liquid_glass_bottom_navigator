@@ -562,11 +562,17 @@ class RenderLiquidNavigation extends RenderBox
     if (content.width <= 0 || content.height <= 0) {
       return slotLimit;
     }
-    // One margin on every side of the content. End items are already placed
-    // so this margin leaves the same gap to the glass above, below, and on
-    // the outer side. A short glass reduces the margin instead of clipping.
-    final breath = _breathFor(content);
-    final hugged = content.inflate(breath);
+    // Horizontal margin widens the pill. Vertical margin stays smaller so the
+    // pill is flat. End items are placed so the glass gap matches on the top,
+    // the bottom, and the outer side. A short glass reduces the vertical
+    // margin instead of clipping.
+    final margins = _marginsFor(content);
+    final hugged = Rect.fromLTRB(
+      content.left - margins.horizontal,
+      content.top - margins.vertical,
+      content.right + margins.horizontal,
+      content.bottom + margins.vertical,
+    );
     final rect = hugged.intersect(slotLimit);
     if (rect.width <= 0 || rect.height <= 0) {
       return slotLimit;
@@ -574,16 +580,12 @@ class RenderLiquidNavigation extends RenderBox
     return rect;
   }
 
-  /// Smallest [indicatorInset] side. Asymmetric insets stay even.
-  double get _preferredBreath => liquidCapsuleBreath(_indicatorInset);
-
-  double _breathFor(Rect content) {
+  ({double horizontal, double vertical}) _marginsFor(Rect content) {
+    final preferred = liquidCapsuleMargins(_indicatorInset);
     final glassHeight = size.height + _barPadding.vertical;
     final room = (glassHeight - content.height) / 2;
-    if (room <= 0) {
-      return 0;
-    }
-    return math.min(_preferredBreath, room);
+    final vertical = room <= 0 ? 0.0 : math.min(preferred.vertical, room);
+    return (horizontal: preferred.horizontal, vertical: vertical);
   }
 
   Rect _deflateForStroke(Rect slot) {
@@ -776,14 +778,15 @@ class RenderLiquidNavigation extends RenderBox
   }
 }
 
-/// Smallest side of [inset], so the capsule margin stays the same on every side.
-double liquidCapsuleBreath(EdgeInsets inset) {
-  return math.max(
-    0.0,
-    math.min(
-      math.min(inset.left, inset.right),
-      math.min(inset.top, inset.bottom),
-    ),
+/// Horizontal and vertical capsule margins from [inset].
+///
+/// Each axis uses its smaller side. A wide horizontal inset and a short
+/// vertical inset produce a flat pill. Callers still place end items so the
+/// outer glass gap matches the top and bottom gaps.
+({double horizontal, double vertical}) liquidCapsuleMargins(EdgeInsets inset) {
+  return (
+    horizontal: math.max(0.0, math.min(inset.left, inset.right)),
+    vertical: math.max(0.0, math.min(inset.top, inset.bottom)),
   );
 }
 

@@ -26,10 +26,10 @@ class _LiquidGlassExampleAppState extends State<LiquidGlassExampleApp> {
   bool _rtl = false;
   bool _includeLabels = true;
   double _blur = 18;
-  double _height = 68;
+  double _height = 58;
   double _radius = 32;
   double _margin = 16;
-  double _padding = 8;
+  double _padding = 6;
   double _itemSpacing = 0;
   int _itemCount = 5;
   bool _compactWidth = false;

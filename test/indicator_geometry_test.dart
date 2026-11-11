@@ -32,7 +32,8 @@ void main() {
       morphIntensity: 1,
     );
     expect(placed.rect.center.dx, closeTo(origin.center.dx + 12, 0.01));
-    expect(placed.rect.width, closeTo(origin.width, 0.01));
+    expect(placed.rect.width, greaterThan(origin.width));
+    expect(placed.rect.width, lessThan(slots[1].width));
     expect(placed.blob, 0);
     expect(placed.travelRight, isTrue);
   });
@@ -49,6 +50,18 @@ void main() {
     expect(stretched.blob, greaterThan(0));
     expect(stretched.travelRight, isTrue);
     expect(stretched.rect.right, greaterThan(origin.right));
+    expect(stretched.rect.center.dx, closeTo(origin.center.dx + 16, 0.5));
+
+    final reversed = liquidDragPlacement(
+      slots: slots,
+      origin: origin,
+      centerX: origin.center.dx + 16,
+      stretch: true,
+      morphIntensity: 1,
+      movingRight: false,
+    );
+    expect(reversed.travelRight, isFalse);
+    expect(reversed.rect.center.dx, closeTo(stretched.rect.center.dx, 0.01));
 
     final clamped = liquidDragPlacement(
       slots: slots,

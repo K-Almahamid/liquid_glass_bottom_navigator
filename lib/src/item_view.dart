@@ -109,11 +109,15 @@ class LiquidNavigationItemView extends StatelessWidget {
         ? _labelSlotHeight(context, foreground)
         : 0.0;
     final direction = Directionality.of(context);
+    final margins = liquidCapsuleMargins(
+      style.indicatorInset.resolve(direction),
+    );
     return _ClusterFrame(
       anchor: _anchor,
       barPadding: style.padding.resolve(direction),
       itemPadding: style.itemPadding.resolve(direction),
-      breath: liquidCapsuleBreath(style.indicatorInset.resolve(direction)),
+      breathX: margins.horizontal,
+      breathY: margins.vertical,
       textDirection: direction,
       child: NavigationContent(
         child: Column(
@@ -234,14 +238,16 @@ enum _SlotAnchor { start, center, end }
 ///
 /// Every destination uses the same vertical center, so a label cannot move
 /// the icon. The first and last destinations sit in from the glass by the
-/// same amount as the capsule's top and bottom gaps. Middle destinations
-/// stay centered in their slots.
+/// same amount as the capsule's top and bottom gaps. [breathX] is the
+/// horizontal capsule margin and [breathY] is the vertical one. Middle
+/// destinations stay centered in their slots.
 class _ClusterFrame extends SingleChildRenderObjectWidget {
   const _ClusterFrame({
     required this.anchor,
     required this.barPadding,
     required this.itemPadding,
-    required this.breath,
+    required this.breathX,
+    required this.breathY,
     required this.textDirection,
     super.child,
   });
@@ -249,7 +255,8 @@ class _ClusterFrame extends SingleChildRenderObjectWidget {
   final _SlotAnchor anchor;
   final EdgeInsets barPadding;
   final EdgeInsets itemPadding;
-  final double breath;
+  final double breathX;
+  final double breathY;
   final TextDirection textDirection;
 
   @override
@@ -258,7 +265,8 @@ class _ClusterFrame extends SingleChildRenderObjectWidget {
       anchor: anchor,
       barPadding: barPadding,
       itemPadding: itemPadding,
-      breath: breath,
+      breathX: breathX,
+      breathY: breathY,
       textDirection: textDirection,
     );
   }
@@ -272,7 +280,8 @@ class _ClusterFrame extends SingleChildRenderObjectWidget {
       ..anchor = anchor
       ..barPadding = barPadding
       ..itemPadding = itemPadding
-      ..breath = breath
+      ..breathX = breathX
+      ..breathY = breathY
       ..textDirection = textDirection;
   }
 }
@@ -283,14 +292,16 @@ class _RenderClusterFrame extends RenderBox
     required this._anchor,
     required this._barPadding,
     required this._itemPadding,
-    required this._breath,
+    required this._breathX,
+    required this._breathY,
     required this._textDirection,
   });
 
   _SlotAnchor _anchor;
   EdgeInsets _barPadding;
   EdgeInsets _itemPadding;
-  double _breath;
+  double _breathX;
+  double _breathY;
   TextDirection _textDirection;
 
   set anchor(_SlotAnchor value) {
@@ -317,11 +328,19 @@ class _RenderClusterFrame extends RenderBox
     markNeedsLayout();
   }
 
-  set breath(double value) {
-    if (_breath == value) {
+  set breathX(double value) {
+    if (_breathX == value) {
       return;
     }
-    _breath = value;
+    _breathX = value;
+    markNeedsLayout();
+  }
+
+  set breathY(double value) {
+    if (_breathY == value) {
+      return;
+    }
+    _breathY = value;
     markNeedsLayout();
   }
 
@@ -402,11 +421,11 @@ class _RenderClusterFrame extends RenderBox
 
     final glassHeight = size.height + _barPadding.vertical;
     final room = (glassHeight - child.size.height) / 2;
-    final breath = room <= 0 ? 0.0 : math.min(_breath, room);
+    final breathY = room <= 0 ? 0.0 : math.min(_breathY, room);
     final dy =
         (size.height - child.size.height) / 2 +
         (_barPadding.bottom - _barPadding.top) / 2;
-    final dx = _dx(child.size.width, child.size.height, breath);
+    final dx = _dx(child.size.width, child.size.height, breathY);
     final parentData = child.parentData! as BoxParentData;
     parentData.offset = Offset(dx, dy);
   }
@@ -414,29 +433,32 @@ class _RenderClusterFrame extends RenderBox
   /// Horizontal origin of the cluster inside this slot.
   ///
   /// End destinations are shifted so the capsule's outer edge matches its
-  /// top and bottom gaps. A slot that cannot hold that inset keeps the
-  /// cluster inside the slot instead.
-  double _dx(double childWidth, double childHeight, double breath) {
-    if (childWidth + breath * 2 > size.width) {
+  /// top and bottom gaps. [breathY] is the vertical capsule margin. The
+  /// horizontal margin is [_breathX]. A slot that cannot hold that inset
+  /// keeps the cluster inside the slot instead.
+  double _dx(double childWidth, double childHeight, double breathY) {
+    final breathX = _breathX;
+    if (childWidth + breathX * 2 > size.width) {
       return math.max(0.0, (size.width - childWidth) / 2);
     }
     final glassHeight = size.height + _barPadding.vertical;
     final side = (glassHeight - childHeight) / 2;
+    final gap = math.max(0.0, side - breathY);
     final double dx;
     switch (_anchor) {
       case _SlotAnchor.center:
         dx = (size.width - childWidth) / 2;
       case _SlotAnchor.start:
         dx = _textDirection == TextDirection.ltr
-            ? -_barPadding.left + side
-            : size.width + _barPadding.right - side - childWidth;
+            ? -_barPadding.left + gap + breathX
+            : size.width + _barPadding.right - gap - breathX - childWidth;
       case _SlotAnchor.end:
         dx = _textDirection == TextDirection.ltr
-            ? size.width + _barPadding.right - side - childWidth
-            : -_barPadding.left + side;
+            ? size.width + _barPadding.right - gap - breathX - childWidth
+            : -_barPadding.left + gap + breathX;
     }
-    final minDx = breath;
-    final maxDx = size.width - childWidth - breath;
+    final minDx = breathX;
+    final maxDx = size.width - childWidth - breathX;
     if (dx < minDx) {
       return minDx;
     }

@@ -314,6 +314,22 @@ void main() {
       expect(_iconCenters(tester), homeIcons);
     },
   );
+
+  testWidgets('the default badge sits on the icon, not above it', (
+    tester,
+  ) async {
+    await pumpNavigationBar(
+      tester,
+      items: sampleItems(withBadge: true),
+      currentIndex: 2,
+      onIndexChanged: (_) {},
+    );
+    final icon = tester.getRect(find.byIcon(Icons.inbox_outlined));
+    final badge = tester.getRect(find.text('12'));
+    expect(badge.center.dy, greaterThan(icon.top + 4));
+    expect(badge.center.dy, lessThan(icon.bottom));
+    expect(badge.center.dx, greaterThan(icon.center.dx - 2));
+  });
 }
 
 List<double> _iconCenters(WidgetTester tester) {
@@ -358,6 +374,7 @@ void _expectEqualOuterGap(
   expect(side, closeTo(top, 0.75));
   expect(top, inInclusiveRange(4, 10));
   expect(indicator.width, lessThan(glass.width / 2));
+  expect(indicator.height, lessThan(indicator.width));
 }
 
 void _expectContains(Rect outer, Rect inner) {

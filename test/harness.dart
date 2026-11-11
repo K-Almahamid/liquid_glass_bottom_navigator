@@ -11,6 +11,7 @@ const LiquidGlassNavigationStyle testStyle = LiquidGlassNavigationStyle(
   blurSigma: 0,
   elevation: 0,
   height: 64,
+  maxWidth: double.infinity,
   expandForTextScale: true,
 );
 
