@@ -654,6 +654,234 @@ void main() {
       }
     }
   });
+
+  testWidgets('label modes share bar height, icon line, and capsule height', (
+    tester,
+  ) async {
+    const labels = <String>['Home', 'Search', 'Inbox', 'Saved', 'Profile'];
+    const icons = <IconData>[
+      Icons.home_rounded,
+      Icons.search_rounded,
+      Icons.inbox_outlined,
+      Icons.bookmark_border_rounded,
+      Icons.person_rounded,
+    ];
+    final items = <LiquidGlassNavigationItem>[
+      for (var i = 0; i < labels.length; i++)
+        LiquidGlassNavigationItem(icon: icons[i], label: labels[i]),
+    ];
+    final style = testStyle.copyWith(
+      height: 58,
+      padding: const EdgeInsets.all(6),
+    );
+
+    Future<({double glass, Rect icon, Rect capsule})> measure(
+      LiquidGlassLabelMode mode,
+      int index, {
+      TextDirection direction = TextDirection.ltr,
+      double textScale = 1,
+      LiquidGlassNavigationStyle? itemStyle,
+      List<LiquidGlassNavigationItem>? row,
+    }) async {
+      await pumpNavigationBar(
+        tester,
+        items: row ?? items,
+        currentIndex: index,
+        onIndexChanged: (_) {},
+        labelMode: mode,
+        style: itemStyle ?? style,
+        surface: const Size(402, 240),
+        textDirection: direction,
+        textScale: textScale,
+      );
+      await tester.pump(const Duration(seconds: 1));
+      expect(tester.takeException(), isNull);
+      final icon = tester.getRect(find.byIcon((row ?? items)[index].icon!));
+      return (
+        glass: tester.getSize(find.byType(GlassSurface)).height,
+        icon: icon,
+        capsule: _global(tester, indicatorRender(tester).debugIndicatorRect!),
+      );
+    }
+
+    for (final direction in TextDirection.values) {
+      for (final index in <int>[0, 2, 4]) {
+        final always = await measure(
+          LiquidGlassLabelMode.always,
+          index,
+          direction: direction,
+        );
+        final hidden = await measure(
+          LiquidGlassLabelMode.hidden,
+          index,
+          direction: direction,
+        );
+        if (index == 0 || index == labels.length - 1) {
+          _expectEqualOuterGap(tester, index: index, direction: direction);
+        }
+        final selected = await measure(
+          LiquidGlassLabelMode.selected,
+          index,
+          direction: direction,
+        );
+
+        expect(hidden.glass, closeTo(always.glass, 0.5));
+        expect(selected.glass, closeTo(always.glass, 0.5));
+        expect(hidden.icon.center.dy, closeTo(always.icon.center.dy, 0.5));
+        expect(selected.icon.center.dy, closeTo(always.icon.center.dy, 0.5));
+        expect(hidden.capsule.height, closeTo(always.capsule.height, 0.5));
+        expect(selected.capsule.height, closeTo(always.capsule.height, 0.5));
+        expect(selected.capsule.width, closeTo(always.capsule.width, 0.5));
+        expect(hidden.capsule.width, greaterThan(hidden.capsule.height * 1.3));
+        expect(hidden.capsule.width, lessThan(always.capsule.width));
+        _expectContains(always.capsule, always.icon);
+        _expectContains(hidden.capsule, hidden.icon);
+        _expectContains(selected.capsule, selected.icon);
+        expect(
+          (hidden.capsule.center.dx - hidden.icon.center.dx).abs(),
+          lessThan(0.5),
+        );
+        final hiddenInset = hidden.icon.left - hidden.capsule.left;
+        expect(hiddenInset, greaterThanOrEqualTo(14 - 0.5));
+        expect(
+          hidden.capsule.right - hidden.icon.right,
+          closeTo(hiddenInset, 0.5),
+        );
+        if (direction == TextDirection.ltr) {
+          final label = tester.getRect(find.text(labels[index]));
+          _expectContains(selected.capsule, label);
+          expect(label.right, lessThanOrEqualTo(selected.capsule.right + 0.5));
+        }
+        if (index == 2) {
+          expect(hidden.icon.center.dx, closeTo(always.icon.center.dx, 0.5));
+          expect(selected.icon.center.dx, closeTo(always.icon.center.dx, 0.5));
+        }
+      }
+    }
+
+    final before = await measure(LiquidGlassLabelMode.always, 2);
+    final switched = await measure(LiquidGlassLabelMode.hidden, 2);
+    final back = await measure(LiquidGlassLabelMode.selected, 2);
+    expect(switched.icon.center.dy, closeTo(before.icon.center.dy, 0.5));
+    expect(back.icon.center.dy, closeTo(before.icon.center.dy, 0.5));
+    expect(switched.icon.center.dx, closeTo(before.icon.center.dx, 0.5));
+    expect(back.icon.center.dx, closeTo(before.icon.center.dx, 0.5));
+
+    final selectedHome = await measure(LiquidGlassLabelMode.selected, 0);
+    final selectedProfile = await measure(LiquidGlassLabelMode.selected, 4);
+    final homeAgain = tester.getRect(find.byIcon(Icons.home_rounded));
+    expect(homeAgain.center.dx, closeTo(selectedHome.icon.center.dx, 0.5));
+    expect(homeAgain.center.dy, closeTo(selectedHome.icon.center.dy, 0.5));
+    expect(
+      tester.getRect(find.byIcon(Icons.person_rounded)).center.dy,
+      closeTo(selectedProfile.icon.center.dy, 0.5),
+    );
+
+    final large = style.copyWith(iconSize: 32);
+    final largeAlways = await measure(
+      LiquidGlassLabelMode.always,
+      2,
+      itemStyle: large,
+    );
+    final largeHidden = await measure(
+      LiquidGlassLabelMode.hidden,
+      2,
+      itemStyle: large,
+    );
+    expect(largeHidden.glass, closeTo(largeAlways.glass, 0.5));
+    expect(
+      largeHidden.icon.center.dy,
+      closeTo(largeAlways.icon.center.dy, 0.5),
+    );
+    expect(
+      largeHidden.capsule.height,
+      closeTo(largeAlways.capsule.height, 0.5),
+    );
+
+    final scaledAlways = await measure(
+      LiquidGlassLabelMode.always,
+      2,
+      textScale: 1.6,
+    );
+    final scaledHidden = await measure(
+      LiquidGlassLabelMode.hidden,
+      2,
+      textScale: 1.6,
+    );
+    final scaledSelected = await measure(
+      LiquidGlassLabelMode.selected,
+      2,
+      textScale: 1.6,
+    );
+    expect(
+      scaledHidden.icon.center.dy,
+      closeTo(scaledAlways.icon.center.dy, 0.5),
+    );
+    expect(
+      scaledSelected.icon.center.dy,
+      closeTo(scaledAlways.icon.center.dy, 0.5),
+    );
+    expect(
+      scaledHidden.capsule.height,
+      closeTo(scaledAlways.capsule.height, 0.5),
+    );
+    expect(
+      scaledSelected.capsule.height,
+      closeTo(scaledAlways.capsule.height, 0.5),
+    );
+    _expectContains(scaledSelected.capsule, tester.getRect(find.text('Inbox')));
+
+    final custom = <LiquidGlassNavigationItem>[
+      items[0],
+      items[1],
+      LiquidGlassNavigationItem(
+        label: 'Profile',
+        child: const SizedBox(key: Key('profile-mark'), width: 28, height: 28),
+      ),
+    ];
+    for (final mode in LiquidGlassLabelMode.values) {
+      await pumpNavigationBar(
+        tester,
+        items: custom,
+        currentIndex: 2,
+        onIndexChanged: (_) {},
+        labelMode: mode,
+        style: style,
+        surface: const Size(402, 240),
+      );
+      await tester.pump(const Duration(seconds: 1));
+      final child = tester.getRect(find.byKey(const Key('profile-mark')));
+      final capsule = _global(
+        tester,
+        indicatorRender(tester).debugIndicatorRect!,
+      );
+      _expectContains(capsule, child);
+      expect(capsule.center.dx, closeTo(child.center.dx, 0.5));
+      if (mode != LiquidGlassLabelMode.hidden) {
+        _expectContains(capsule, tester.getRect(find.text('Profile')));
+      } else {
+        expect(find.text('Profile'), findsNothing);
+      }
+    }
+
+    final plain = await measure(LiquidGlassLabelMode.hidden, 0);
+    final badged = <LiquidGlassNavigationItem>[
+      LiquidGlassNavigationItem(
+        icon: Icons.home_rounded,
+        label: 'Home',
+        badge: const LiquidGlassBadge.count(4),
+      ),
+      ...items.skip(1),
+    ];
+    final withBadge = await measure(
+      LiquidGlassLabelMode.hidden,
+      0,
+      row: badged,
+    );
+    expect(withBadge.capsule.width, closeTo(plain.capsule.width, 0.5));
+    expect(withBadge.capsule.height, closeTo(plain.capsule.height, 0.5));
+    expect(find.text('4'), findsOneWidget);
+  });
 }
 
 List<double> _iconCenters(WidgetTester tester) {

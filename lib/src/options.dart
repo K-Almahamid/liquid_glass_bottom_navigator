@@ -1,13 +1,16 @@
 /// How item labels are shown inside [LiquidGlassNavigationBar].
 ///
-/// Items without a label stay valid in every mode. The bar reserves label
-/// space whenever a mode can show labels, so changing selection does not
-/// change the bar height.
+/// Items without a label stay valid in every mode. The bar reserves the label
+/// line whenever any item has a label, including [hidden]. That keeps one icon
+/// line and one capsule height. [hidden] does not paint the label, so the
+/// capsule width follows the icon and stays a horizontal pill. Changing the
+/// selection does not change the bar height.
 enum LiquidGlassLabelMode {
   /// Hide every label, including items that provide one.
   ///
-  /// The capsule wraps the icon or custom child. Spoken labels stay on the
-  /// semantics node.
+  /// The label line stays in the layout so the icon and the capsule height
+  /// match [always]. The capsule width follows the icon. Spoken labels stay
+  /// on the semantics node.
   hidden,
 
   /// Show every item that provides a label.

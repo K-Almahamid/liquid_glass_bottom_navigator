@@ -112,11 +112,11 @@ A child that wins the gesture arena, such as its own button, can block the item 
 
 `LiquidGlassLabelMode`:
 
-- `hidden` hides every label. The capsule wraps the icon or custom child. Screen readers still hear the destination name.
+- `hidden` hides every label. The label line stays in the layout, so the icon and the capsule height match `always`. The capsule width follows the icon and stays a horizontal pill. Screen readers still hear the destination name.
 - `always` shows every label that was provided. The selected capsule wraps that icon and the whole label.
 - `selected` shows the selected item's label and keeps the other labels in the layout at opacity 0, so the icon line does not jump. The capsule still wraps the selected icon and label.
 
-Items without labels are valid in every mode. Icons share one vertical center. When a label line is reserved, that line is under the icon and the icon-plus-label column is centered in the glass. When labels are hidden, the label line is not reserved and the icon is centered. The bar height does not jump when the selection changes. On the first and last destinations, the capsule's distance to the glass matches on the top, the bottom, and the outer side when the slot can hold that inset. A narrow slot or large text keeps the capsule inside the glass, centered on the icon and label, instead of forcing the gap.
+Items without labels are valid in every mode. All three modes share the bar size, the icon line, and the capsule height. Label visibility changes the capsule width. `always` and `selected` wrap the selected icon and label. `hidden` wraps the icon, then widens the capsule around that icon when the result would be round. The label line is under the icon, and the column is centered in the glass. The bar height does not jump when the selection or the label mode changes. On the first and last destinations, the capsule's distance to the glass matches on the top, the bottom, and the outer side when the slot can hold that inset. A narrow slot or large text keeps the capsule inside the glass, centered on the icon and label, instead of forcing the gap.
 
 ## Layout and glass
 

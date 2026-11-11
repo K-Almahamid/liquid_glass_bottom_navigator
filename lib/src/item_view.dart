@@ -151,7 +151,10 @@ class LiquidNavigationItemView extends StatelessWidget {
               SizedBox(height: style.labelSpacing),
               SizedBox(
                 height: labelHeight,
-                child: label == null
+                width: label == null || labelMode == LiquidGlassLabelMode.hidden
+                    ? null
+                    : _labelSlotWidth(context, label, foreground),
+                child: label == null || labelMode == LiquidGlassLabelMode.hidden
                     ? null
                     : Opacity(
                         opacity: showLabelText ? 1 : 0,
@@ -201,6 +204,49 @@ class LiquidNavigationItemView extends StatelessWidget {
     return math.max(selectedHeight, idleHeight);
   }
 
+  /// Wider of the selected and idle styles, so a selection change does not
+  /// resize the column.
+  double _labelSlotWidth(BuildContext context, String label, Color foreground) {
+    final direction = Directionality.of(context);
+    final scaler = MediaQuery.textScalerOf(context);
+    final defaults = DefaultTextStyle.of(context).style;
+    return math.max(
+      _textWidth(
+        _resolvedLabelStyle(_labelStyle(foreground, selected: true), defaults),
+        label,
+        scaler,
+        direction,
+      ),
+      _textWidth(
+        _resolvedLabelStyle(_labelStyle(foreground, selected: false), defaults),
+        label,
+        scaler,
+        direction,
+      ),
+    );
+  }
+
+  TextStyle _resolvedLabelStyle(TextStyle style, TextStyle defaults) {
+    return style.inherit ? defaults.merge(style) : style;
+  }
+
+  double _textWidth(
+    TextStyle style,
+    String text,
+    TextScaler scaler,
+    TextDirection direction,
+  ) {
+    final painter = TextPainter(
+      text: TextSpan(text: text, style: style),
+      textDirection: direction,
+      textScaler: scaler,
+      maxLines: 1,
+    )..layout();
+    final width = painter.width;
+    painter.dispose();
+    return width;
+  }
+
   double _lineHeight(
     TextStyle style,
     TextScaler scaler,
@@ -240,10 +286,12 @@ enum _SlotAnchor { start, center, end }
 /// Places the icon and label cluster.
 ///
 /// Every destination uses the same column, so icons stay on one line. When a
-/// label line is reserved, that column is the icon plus the label. When it is
-/// not, the column is the icon. The column is placed so the capsule around it
+/// label line is reserved, that column is the icon plus the label band, even
+/// if the label is not painted. The column is placed so the capsule around it
 /// has the same gap above, below, and, for the first and last destinations,
-/// on the outer side. [breathX] and [breathY] are those capsule margins.
+/// on the outer side. [breathX] and [breathY] are those capsule margins. An
+/// icon-sized column is treated as wider when the capsule would otherwise be
+/// round, and the icon stays centered in that width.
 /// [iconExtent] is the shared icon-line height. A column that does not fit
 /// the inset stays inside the slot.
 class _ClusterFrame extends SingleChildRenderObjectWidget {
@@ -449,9 +497,24 @@ class _RenderClusterFrame extends RenderBox
     final dy = column >= glassHeight
         ? (glassHeight - column) / 2 - _barPadding.top
         : gap + breathY - _barPadding.top;
-    final dx = _dx(child.size.width, column, breathY, glassHeight);
+    final visualWidth = _visualWidth(child.size.width, capsuleHeight);
+    final dx = _dx(visualWidth, column, breathY, glassHeight);
+    final childDx = dx + (visualWidth - child.size.width) / 2;
     final parentData = child.parentData! as BoxParentData;
-    parentData.offset = Offset(dx, dy);
+    parentData.offset = Offset(childDx, dy);
+  }
+
+  /// Content width the capsule uses for edge placement.
+  ///
+  /// A cluster narrower than [liquidMinCapsuleAspect] times the capsule height
+  /// is widened, and the icon stays centered in that width. The indicator uses
+  /// the same ratio.
+  double _visualWidth(double childWidth, double capsuleHeight) {
+    final minContent = math.max(
+      0.0,
+      capsuleHeight * liquidMinCapsuleAspect - _breathX * 2,
+    );
+    return math.max(childWidth, minContent);
   }
 
   /// Horizontal origin of the cluster inside this slot.

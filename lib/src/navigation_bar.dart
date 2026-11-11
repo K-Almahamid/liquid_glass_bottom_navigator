@@ -503,9 +503,9 @@ class _LiquidGlassNavigationBarState extends State<LiquidGlassNavigationBar>
       width = width.clamp(minWidth, maxWidth).toDouble();
     }
 
-    final reserveLabelLine =
-        widget.labelMode != LiquidGlassLabelMode.hidden &&
-        widget.items.any(_hasLabel);
+    // Hidden labels still occupy the line, so the icon and the capsule height
+    // match the modes that paint labels. The text itself is not built.
+    final reserveLabelLine = widget.items.any(_hasLabel);
     final layoutChild = LiquidNavigationLayout(
       key: _layoutKey,
       targetIndex: _effectiveIndex,

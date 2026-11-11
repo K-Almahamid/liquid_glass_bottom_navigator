@@ -6,6 +6,12 @@ import 'package:flutter/widgets.dart';
 import 'indicator_geometry.dart';
 import 'options.dart';
 
+/// A resting capsule stays wider than it is tall.
+///
+/// Labeled content already clears this ratio. An icon-sized cluster is widened
+/// around its center so the silhouette stays a horizontal pill.
+const double liquidMinCapsuleAspect = 1.35;
+
 /// Lays out navigation items and paints the selection capsule behind them.
 ///
 /// The capsule listens to [animation] and repaints without rebuilding items.
@@ -569,13 +575,30 @@ class RenderLiquidNavigation extends RenderBox
       content.right + margins.horizontal,
       content.bottom + margins.vertical,
     );
+    final preferred = _asHorizontalPill(hugged);
     // Intersecting a capsule that hangs past one slot edge would slide its
     // center off the icon. Shrink both sides of that axis instead.
-    final rect = _centeredIn(hugged, slotLimit);
+    final rect = _centeredIn(preferred, slotLimit);
     if (rect.width <= 0 || rect.height <= 0) {
       return slotLimit;
     }
     return rect;
+  }
+
+  /// Widens a near-round capsule around the same center.
+  ///
+  /// Height is the shared column plus the vertical inset, so this does not
+  /// change a capsule that already wraps a label.
+  Rect _asHorizontalPill(Rect hugged) {
+    final minWidth = hugged.height * liquidMinCapsuleAspect;
+    if (hugged.width >= minWidth) {
+      return hugged;
+    }
+    return Rect.fromCenter(
+      center: hugged.center,
+      width: minWidth,
+      height: hugged.height,
+    );
   }
 
   /// [preferred] when it fits in [limit]. Otherwise the same center, inset
