@@ -215,6 +215,6 @@ Replace `macos` with the physical iPhone device id for that follow-up. See `exam
 
 ## Versioning
 
-Version `1.1.0` adds opt-in drag selection and stays compatible with `1.0.0`. The license is BSD 3-Clause. See [LICENSE](LICENSE). Issues: https://github.com/K-Almahamid/liquid_glass_bottom_navigator/issues. See [CONTRIBUTING.md](CONTRIBUTING.md).
+Version `1.1.0` adds opt-in drag selection and stays compatible with `1.0.0`. The license is BSD 3-Clause. See [LICENSE](LICENSE). Issues: https://github.com/K-Almahamid/liquid_glass_bottom_navigator/issues.
 
 Source: https://github.com/K-Almahamid/liquid_glass_bottom_navigator
