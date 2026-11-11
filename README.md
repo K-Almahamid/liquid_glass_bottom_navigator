@@ -75,7 +75,7 @@ Press the selected destination and drag horizontally. The capsule follows the fi
 
 A different destination calls `onIndexChanged` once. The parent decides whether `currentIndex` changes. If it does, the capsule springs from the drag preview into that slot. If the parent keeps the old index, or changes it later, the capsule follows `currentIndex`. The package does not store a second selection.
 
-The drag starts only on the selected slot, after the touch slop, so a tap still selects. A vertical move is left to the surrounding scroll view. RTL uses the laid-out slot rectangles. `morphingPill` stretches slightly with the drag. `slidingPill`, reduced motion, and `LiquidGlassMotion.none()` follow the finger without that stretch. Haptics play once when a drag requests a new index, and they stay silent for the preview, a snap-back, and a parent-driven index change. Keyboard and screen-reader activation do not require dragging.
+The drag starts only on the selected slot, after the touch slop, so a tap still selects. A vertical move is left to the surrounding scroll view. RTL uses the laid-out slot rectangles. `morphingPill` stretches slightly with the drag. When the finger slows or reverses, that stretch eases back to a plain pill before it points the other way. `slidingPill`, reduced motion, and `LiquidGlassMotion.none()` follow the finger without that stretch. Haptics play once when a drag requests a new index, and they stay silent for the preview, a snap-back, and a parent-driven index change. Keyboard and screen-reader activation do not require dragging.
 
 An empty `items` list draws the glass surface with no destinations. An index outside `0 .. items.length - 1` selects nothing; taps on real items still report a new index. An invalid index does not throw. Changing the number of items snaps the indicator onto `currentIndex`. A reorder that keeps the same length does not replay motion unless the index changes.
 
@@ -116,13 +116,13 @@ A child that wins the gesture arena, such as its own button, can block the item 
 - `always` shows every label that was provided.
 - `selected` shows the selected item's label and keeps the other labels in the layout at opacity 0.
 
-Items without labels are valid in every mode. Icons share one vertical center. A label sits under that center and does not move it. When any label is showing, items without a label keep the same label line. The bar height does not jump when the selection changes. The capsule uses one even margin around that content. On the first and last destinations, its distance to the glass matches on the top, the bottom, and the outer side.
+Items without labels are valid in every mode. Icons share one vertical center, and that center is the middle of the glass. A label sits under that center and does not move it. When any label is showing, items without a label keep the same label line. The bar height does not jump when the selection changes. The capsule is a wide, short pill around the icon. Its width also covers the label. On the first and last destinations, its distance to the glass matches on the top, the bottom, and the outer side.
 
 ## Layout and glass
 
 `LiquidGlassNavigationStyle` controls size and material:
 
-- `width`, `minWidth`, and `maxWidth` (default max width is 340; use `double.infinity` for the full parent)
+- `width`, `minWidth`, and `maxWidth` (default max width is 520; a narrower parent uses the space left after `margin`; use `double.infinity` for the full parent)
 - `height` as the minimum glass height, excluding margin
 - `maxHeight` and `expandForTextScale` for large text
 - `margin`, `padding`, `itemPadding`, and `itemSpacing` as `EdgeInsetsGeometry` where a direction matters
@@ -130,17 +130,17 @@ Items without labels are valid in every mode. Icons share one vertical center. A
 - `borderRadius`, `indicatorInset` (horizontal and vertical capsule margins; each axis uses its smaller side), `indicatorRadius`
 - `iconSize`, label styles, and `labelSpacing`
 - `blurSigma` (zero disables the blur), `borderWidth`
-- `elevation`, with optional `shadowBlurRadius` and `shadowOffset`
+- `elevation` (default 0, no drop shadow), with optional `shadowBlurRadius` and `shadowOffset`
 - `minTouchTarget` (default 48). The slot honors it when the bar is tall and wide enough
 - `backgroundColor`, `backgroundOpacity`, `borderColor`, `indicatorColor`, `selectedForeground`, and `unselectedForeground` override the resolved theme. Unset fields keep the theme color. An item `foregroundColor` still wins over the style foreground
 - `respectSafeArea` adds the bottom view padding under the glass. The default is true
-- `badgeOffset` and `badgeMinSize`. Positive badge x moves outward from the end edge, so it flips in RTL
+- `badgeOffset` and `badgeMinSize`. A count sits above the icon's trailing corner and a dot sits below it. Positive badge x moves further outward, so it flips in RTL. Positive y moves the badge down
 
 There is no separate item border radius. The bar radius and the indicator radius are the corner controls, so badges are not clipped by an extra item shape.
 
 `LiquidGlassNavigationTheme` holds the colors. `LiquidGlassNavigationTheme.adaptive()` keeps a neutral glass tint and takes the accent, indicator, and unselected foreground from `ThemeData.brightness` and `ColorScheme`. `LiquidGlassNavigationTheme.light` and `.dark` stay fixed. Pass any explicit theme to ignore the ambient colors. A style color set by the caller is applied after that resolution and is not replaced by the adaptive theme.
 
-The glass is one clipped `BackdropFilter`, a neutral tint, a hairline, and one shadow. There is no second blur and no refraction shader. `BackdropFilter` softens the pixels behind the bar. It does not bend them. Set `blurSigma` to `0` for a flat tint when blur is too costly or unavailable. Web and older GPUs vary in how well `BackdropFilter` performs. Impeller can blur, and it is still not free.
+The glass is one clipped `BackdropFilter`, a neutral tint, and a soft rim that is lighter along the top edge. The default elevation is 0, so there is no drop shadow unless you set one. There is no second blur and no refraction shader. `BackdropFilter` softens the pixels behind the bar. It does not bend them. Set `blurSigma` to `0` for a flat tint when blur is too costly or unavailable. Web and older GPUs vary in how well `BackdropFilter` performs. Impeller can blur, and it is still not free.
 
 ## Motion
 
@@ -177,7 +177,7 @@ flutter pub get
 flutter run
 ```
 
-The example scrolls colored notes behind the bar and can switch label mode, theme, blur, size, radius, margin, motion, haptics, drag selection, reduced motion, RTL, equal or intrinsic slots, safe area, compact width, custom avatar, badges, and the selected index. Drag selection starts on. Turn it off from Appearance. The page says: "Hold and drag the selected tab to switch destinations."
+The example is a five-page gallery with content scrolling behind the bar. Appearance can switch label mode, theme, blur, size, radius, margin, motion, haptics, drag selection, reduced motion, RTL, equal or intrinsic slots, safe area, and compact width. Drag selection starts on. Turn it off from Appearance. The page says: "Hold and drag the selected tab to switch destinations."
 
 The preview images above are simulator captures, not drawings. Widget goldens still use `blurSigma: 0`, because backdrop sampling is not stable across test runs.
 

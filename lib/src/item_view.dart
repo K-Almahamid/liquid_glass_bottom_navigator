@@ -118,6 +118,7 @@ class LiquidNavigationItemView extends StatelessWidget {
       itemPadding: style.itemPadding.resolve(direction),
       breathX: margins.horizontal,
       breathY: margins.vertical,
+      iconExtent: style.iconSize,
       textDirection: direction,
       child: NavigationContent(
         child: Column(
@@ -132,13 +133,15 @@ class LiquidNavigationItemView extends StatelessWidget {
                 children: <Widget>[
                   ?visual,
                   if (badge != null && badge.isVisible)
-                    PositionedDirectional(
-                      top: style.badgeOffset.dy,
-                      end: -style.badgeOffset.dx,
-                      child: _BadgeView(
-                        badge: badge,
-                        style: style,
-                        theme: theme,
+                    _badgePosition(
+                      badge,
+                      style.badgeOffset,
+                      _BadgeOverlay(
+                        child: _BadgeView(
+                          badge: badge,
+                          style: style,
+                          theme: theme,
+                        ),
                       ),
                     ),
                 ],
@@ -236,11 +239,12 @@ enum _SlotAnchor { start, center, end }
 
 /// Places the icon and label cluster.
 ///
-/// Every destination uses the same vertical center, so a label cannot move
-/// the icon. The first and last destinations sit in from the glass by the
-/// same amount as the capsule's top and bottom gaps. [breathX] is the
-/// horizontal capsule margin and [breathY] is the vertical one. Middle
-/// destinations stay centered in their slots.
+/// Every destination centers its icon on the glass, so a label under the icon
+/// cannot move it. The first and last destinations sit in from the glass by
+/// the same amount as the capsule's top and bottom gaps. [breathX] is the
+/// horizontal capsule margin and [breathY] is the vertical one. [iconExtent]
+/// is the shared icon-line height. Middle destinations stay centered in
+/// their slots.
 class _ClusterFrame extends SingleChildRenderObjectWidget {
   const _ClusterFrame({
     required this.anchor,
@@ -248,6 +252,7 @@ class _ClusterFrame extends SingleChildRenderObjectWidget {
     required this.itemPadding,
     required this.breathX,
     required this.breathY,
+    required this.iconExtent,
     required this.textDirection,
     super.child,
   });
@@ -257,6 +262,7 @@ class _ClusterFrame extends SingleChildRenderObjectWidget {
   final EdgeInsets itemPadding;
   final double breathX;
   final double breathY;
+  final double iconExtent;
   final TextDirection textDirection;
 
   @override
@@ -267,6 +273,7 @@ class _ClusterFrame extends SingleChildRenderObjectWidget {
       itemPadding: itemPadding,
       breathX: breathX,
       breathY: breathY,
+      iconExtent: iconExtent,
       textDirection: textDirection,
     );
   }
@@ -282,6 +289,7 @@ class _ClusterFrame extends SingleChildRenderObjectWidget {
       ..itemPadding = itemPadding
       ..breathX = breathX
       ..breathY = breathY
+      ..iconExtent = iconExtent
       ..textDirection = textDirection;
   }
 }
@@ -294,6 +302,7 @@ class _RenderClusterFrame extends RenderBox
     required this._itemPadding,
     required this._breathX,
     required this._breathY,
+    required this._iconExtent,
     required this._textDirection,
   });
 
@@ -302,6 +311,7 @@ class _RenderClusterFrame extends RenderBox
   EdgeInsets _itemPadding;
   double _breathX;
   double _breathY;
+  double _iconExtent;
   TextDirection _textDirection;
 
   set anchor(_SlotAnchor value) {
@@ -341,6 +351,14 @@ class _RenderClusterFrame extends RenderBox
       return;
     }
     _breathY = value;
+    markNeedsLayout();
+  }
+
+  set iconExtent(double value) {
+    if (_iconExtent == value) {
+      return;
+    }
+    _iconExtent = value;
     markNeedsLayout();
   }
 
@@ -420,12 +438,13 @@ class _RenderClusterFrame extends RenderBox
     size = constraints.constrain(Size(width, height));
 
     final glassHeight = size.height + _barPadding.vertical;
-    final room = (glassHeight - child.size.height) / 2;
+    final room = (glassHeight - _iconExtent) / 2;
     final breathY = room <= 0 ? 0.0 : math.min(_breathY, room);
-    final dy =
-        (size.height - child.size.height) / 2 +
-        (_barPadding.bottom - _barPadding.top) / 2;
-    final dx = _dx(child.size.width, child.size.height, breathY);
+    // Center the icon line in the glass. The label hangs below that line and
+    // may use the bottom padding. Clamping the whole column would push the
+    // icon back up.
+    final dy = glassHeight / 2 - _barPadding.top - _iconExtent / 2;
+    final dx = _dx(child.size.width, breathY, glassHeight);
     final parentData = child.parentData! as BoxParentData;
     parentData.offset = Offset(dx, dy);
   }
@@ -433,17 +452,16 @@ class _RenderClusterFrame extends RenderBox
   /// Horizontal origin of the cluster inside this slot.
   ///
   /// End destinations are shifted so the capsule's outer edge matches its
-  /// top and bottom gaps. [breathY] is the vertical capsule margin. The
-  /// horizontal margin is [_breathX]. A slot that cannot hold that inset
-  /// keeps the cluster inside the slot instead.
-  double _dx(double childWidth, double childHeight, double breathY) {
+  /// top and bottom gaps. The capsule height is the icon line plus [breathY]
+  /// on both sides, not the label. The horizontal margin is [_breathX]. A
+  /// slot that cannot hold that inset keeps the cluster inside the slot.
+  double _dx(double childWidth, double breathY, double glassHeight) {
     final breathX = _breathX;
     if (childWidth + breathX * 2 > size.width) {
       return math.max(0.0, (size.width - childWidth) / 2);
     }
-    final glassHeight = size.height + _barPadding.vertical;
-    final side = (glassHeight - childHeight) / 2;
-    final gap = math.max(0.0, side - breathY);
+    final capsuleHeight = _iconExtent + breathY * 2;
+    final gap = math.max(0.0, (glassHeight - capsuleHeight) / 2);
     final double dx;
     switch (_anchor) {
       case _SlotAnchor.center:
@@ -526,7 +544,7 @@ class _IconBand extends SingleChildRenderObjectWidget {
   }
 }
 
-class RenderIconBand extends RenderBox
+class RenderIconBand extends RenderIconAnchor
     with RenderObjectWithChildMixin<RenderBox> {
   RenderIconBand({required this._height});
 
@@ -688,6 +706,39 @@ class _ItemControlState extends State<_ItemControl> {
         ),
       ),
     );
+  }
+}
+
+/// Count hangs off the upper trailing corner. A dot hangs off the lower one.
+/// [shift] is [LiquidGlassNavigationStyle.badgeOffset]: positive x moves
+/// outward, positive y moves down.
+Widget _badgePosition(LiquidGlassBadge badge, Offset shift, Widget child) {
+  final end = -(shift.dx);
+  return switch (badge.kind) {
+    LiquidGlassBadgeKind.dot => PositionedDirectional(
+      bottom: -2 - shift.dy,
+      end: end - 10,
+      child: child,
+    ),
+    LiquidGlassBadgeKind.count => PositionedDirectional(
+      top: -6 + shift.dy,
+      end: end - 14,
+      child: child,
+    ),
+    LiquidGlassBadgeKind.custom => PositionedDirectional(
+      top: shift.dy,
+      end: end,
+      child: child,
+    ),
+  };
+}
+
+class _BadgeOverlay extends SingleChildRenderObjectWidget {
+  const _BadgeOverlay({required super.child});
+
+  @override
+  RenderBadgeOverlay createRenderObject(BuildContext context) {
+    return RenderBadgeOverlay();
   }
 }
 

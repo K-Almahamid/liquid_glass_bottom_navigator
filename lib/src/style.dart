@@ -19,11 +19,11 @@ class LiquidGlassNavigationStyle {
   ///
   /// [width] null lets the bar take the parent's width after [margin], up to
   /// [maxWidth]. A narrow parent produces a narrow bar. An unbounded parent
-  /// sizes the bar to its items.
+  /// sizes the bar to its items, still capped by [maxWidth].
   const LiquidGlassNavigationStyle({
     this.width,
     this.minWidth,
-    this.maxWidth = 340,
+    this.maxWidth = 520,
     this.height = 58,
     this.maxHeight,
     this.expandForTextScale = true,
@@ -34,7 +34,7 @@ class LiquidGlassNavigationStyle {
     this.itemLayout = LiquidGlassItemLayout.equal,
     this.borderRadius = const BorderRadius.all(Radius.circular(32)),
     this.indicatorInset = const EdgeInsets.symmetric(
-      horizontal: 10,
+      horizontal: 14,
       vertical: 3,
     ),
     this.indicatorRadius = const BorderRadius.all(Radius.circular(24)),
@@ -46,12 +46,12 @@ class LiquidGlassNavigationStyle {
     this.unselectedLabelStyle,
     this.blurSigma = 18,
     this.borderWidth = 1,
-    this.elevation = 6,
+    this.elevation = 0,
     this.shadowBlurRadius,
     this.shadowOffset,
     this.minTouchTarget = 48,
     this.respectSafeArea = true,
-    this.badgeOffset = const Offset(2, 8),
+    this.badgeOffset = Offset.zero,
     this.badgeMinSize = 16,
     this.backgroundColor,
     this.backgroundOpacity,
@@ -86,8 +86,9 @@ class LiquidGlassNavigationStyle {
 
   /// Largest glass width after [margin].
   ///
-  /// The default is 340 so a floating bar stays compact on a wide screen.
-  /// Pass [double.infinity] to let the bar use the full parent width.
+  /// The default is 520. A phone uses the width left after [margin], because
+  /// that width is below the cap. A wider parent stops at 520 so the bar does
+  /// not stretch across a tablet. Pass [double.infinity] for the full parent.
   final double? maxWidth;
 
   /// Minimum outer height of the glass surface, excluding margin.
@@ -125,11 +126,12 @@ class LiquidGlassNavigationStyle {
   ///
   /// Horizontal and vertical insets are independent. The smaller of the two
   /// horizontal sides is the side margin, and the smaller of the two vertical
-  /// sides is the top and bottom margin. The default is wider than it is tall,
-  /// so the capsule stays a flat pill. It does not grow to fill the slot. At
-  /// the first and last destinations, the gap from the capsule to the glass
-  /// matches the gap above and below the capsule. A shorter bar reduces the
-  /// vertical margin so the content still fits.
+  /// sides is the top and bottom margin. The default is 14 by 3. The capsule
+  /// uses that horizontal margin around the icon and label, and the vertical
+  /// margin around the icon only, so the pill stays wide and short. A badge
+  /// does not change those bounds. At the first and last destinations, the
+  /// gap from the capsule to the glass matches the gap above and below the
+  /// capsule. A shorter bar reduces the vertical margin so the icon still fits.
   final EdgeInsetsGeometry indicatorInset;
 
   /// Corner radius of the selection capsule.
@@ -162,7 +164,8 @@ class LiquidGlassNavigationStyle {
   /// Width of the hairline border around the glass.
   final double borderWidth;
 
-  /// Shadow strength. Zero removes the outer shadow.
+  /// Shadow strength. The default is zero, so the bar has no drop shadow.
+  /// Set a positive value to opt into one. Zero removes the outer shadow.
   ///
   /// When [shadowBlurRadius] or [shadowOffset] is null, the shadow is derived
   /// from this elevation.
@@ -183,11 +186,13 @@ class LiquidGlassNavigationStyle {
   /// Whether the bottom [MediaQueryData.padding] is added under the glass.
   final bool respectSafeArea;
 
-  /// Badge shift from the top-end corner of the icon or custom child.
+  /// Extra shift applied after the badge's own anchor.
   ///
-  /// Positive x moves toward the outside of the end edge (right in LTR, left
-  /// in RTL). Positive y moves downward. The default sits on the icon, not
-  /// above it.
+  /// A count sits above the trailing corner of the icon. A dot sits below that
+  /// corner. Positive x moves further outside the end edge (right in LTR, left
+  /// in RTL). Positive y moves downward. The default is zero, so each kind
+  /// keeps its own anchor. A custom badge uses this offset from the top-end
+  /// corner.
   final Offset badgeOffset;
 
   /// Minimum width and height of a count badge.

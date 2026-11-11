@@ -18,11 +18,13 @@ int? liquidSlotAt(List<Rect> slots, Offset point) {
 ///
 /// [slots] are the resting indicator rectangles. [centerX] is the finger
 /// position minus the grab offset from pointer-down, so the capsule does not
-/// jump onto the finger. [movingRight] is the latest finger direction. When
-/// it is null, direction falls back to which side of [origin] [centerX] is
-/// on. [stretch] grows the capsule equally on both sides so a direction
-/// change does not jump the grabbed center. Reduced motion passes
-/// `stretch: false`.
+/// jump onto the finger. [flow] is a smoothed direction from `-1` (left) to
+/// `1` (right). Near zero the capsule is a plain pill, so a reversal passes
+/// through a neutral shape instead of flipping the droplet. When [flow] is
+/// null, [movingRight] is the latest finger direction, or the side of
+/// [origin] that [centerX] is on. [stretch] grows the capsule equally on both
+/// sides so a direction change does not jump the grabbed center. Reduced
+/// motion passes `stretch: false`.
 class LiquidDragPlacement {
   /// Creates a drag placement.
   const LiquidDragPlacement({
@@ -49,6 +51,7 @@ LiquidDragPlacement liquidDragPlacement({
   required bool stretch,
   required double morphIntensity,
   bool? movingRight,
+  double? flow,
 }) {
   final width = _widthAt(slots, centerX, origin.width);
   final height = origin.height;
@@ -60,9 +63,31 @@ LiquidDragPlacement liquidDragPlacement({
   final top = origin.center.dy - height / 2;
   var rect = Rect.fromLTWH(cx - half, top, width, height);
   final delta = cx - origin.center.dx;
-  final travelRight = movingRight ?? delta >= 0;
   final intensity = morphIntensity.clamp(0.0, 1.0);
-  if (!stretch || intensity <= 0 || delta.abs() < 1) {
+  if (!stretch || intensity <= 0) {
+    return LiquidDragPlacement(
+      rect: rect,
+      blob: 0,
+      travelRight: movingRight ?? delta >= 0,
+    );
+  }
+  if (flow != null) {
+    // A small flow is a resting pill. The sign is applied only once the
+    // shape has relaxed, so reversing does not invert a stretched end.
+    final amount = (flow.abs() * intensity).clamp(0.0, 1.0);
+    final eased = amount < 0.12 ? 0.0 : ((amount - 0.12) / 0.88);
+    final extra = rect.width * 0.22 * eased;
+    final grow = extra / 2;
+    rect = Rect.fromLTRB(
+      rect.left - grow,
+      rect.top,
+      rect.right + grow,
+      rect.bottom,
+    );
+    return LiquidDragPlacement(rect: rect, blob: eased, travelRight: flow >= 0);
+  }
+  final travelRight = movingRight ?? delta >= 0;
+  if (delta.abs() < 1) {
     return LiquidDragPlacement(rect: rect, blob: 0, travelRight: travelRight);
   }
   final cap = rect.width * 0.85;

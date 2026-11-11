@@ -147,8 +147,12 @@ void main() {
       expect(slot.height, greaterThanOrEqualTo(48));
       expect(indicator.width, lessThan(slot.width - 16));
       _expectContains(indicator, icon);
-      _expectContains(indicator, label);
-      _expectContains(indicator, badge);
+      expect(
+        label.center.dx,
+        inInclusiveRange(indicator.left, indicator.right),
+      );
+      expect(label.top, greaterThan(icon.center.dy));
+      expect(badge.center.dx, greaterThan(icon.center.dx));
       expect(indicator.center.dx, closeTo(icon.center.dx, 1.5));
     }
   });
@@ -169,11 +173,14 @@ void main() {
       final indicator = _global(tester, render.debugIndicatorRect!);
       final slot = _global(tester, render.debugItemRects[1]);
       expect(slot.shortestSide, greaterThanOrEqualTo(48));
-      _expectContains(
-        indicator,
-        tester.getRect(find.byIcon(Icons.search_rounded)),
+      final icon = tester.getRect(find.byIcon(Icons.search_rounded));
+      final label = tester.getRect(find.text('Search'));
+      _expectContains(indicator, icon);
+      expect(
+        label.center.dx,
+        inInclusiveRange(indicator.left, indicator.right),
       );
-      _expectContains(indicator, tester.getRect(find.text('Search')));
+      expect(label.top, greaterThan(icon.center.dy));
     },
   );
 
@@ -199,7 +206,8 @@ void main() {
     var slot = _global(tester, render.debugItemRects[1]);
     expect(indicator.center.dx, closeTo(slot.center.dx, 1));
     expect(indicator.width, lessThanOrEqualTo(slot.width + 0.5));
-    _expectContains(indicator, tester.getRect(find.text('Search')));
+    final search = tester.getRect(find.text('Search'));
+    expect(search.center.dx, inInclusiveRange(indicator.left, indicator.right));
 
     await show(TextDirection.rtl);
     _expectAligned(_iconCenters(tester));
@@ -230,7 +238,8 @@ void main() {
         labelMode: LiquidGlassLabelMode.selected,
       );
       final home = tester.getRect(find.byIcon(Icons.home_rounded)).center.dy;
-      final avatar = tester.getRect(find.byKey(const Key('avatar'))).center.dy;
+      final avatarRect = tester.getRect(find.byKey(const Key('avatar')));
+      final avatar = avatarRect.center.dy;
       final search = tester
           .getRect(find.byIcon(Icons.search_rounded))
           .center
@@ -246,8 +255,15 @@ void main() {
         indicator,
         tester.getRect(find.byKey(const Key('avatar'))),
       );
-      _expectContains(indicator, tester.getRect(find.text('Inbox')));
-      _expectContains(indicator, tester.getRect(find.text('4')));
+      final label = tester.getRect(find.text('Inbox'));
+      expect(
+        label.center.dx,
+        inInclusiveRange(indicator.left, indicator.right),
+      );
+      expect(
+        tester.getRect(find.text('4')).center.dx,
+        greaterThan(avatarRect.center.dx),
+      );
     },
   );
 
@@ -307,15 +323,17 @@ void main() {
       );
       expect(settledRect.width, greaterThan(home.width + 4));
       expect(settledRect.width, lessThan(slot.width - 8));
-      _expectContains(
-        _global(tester, settledRect),
-        tester.getRect(find.text('Archive')),
-      );
+      final archiveIcon = tester.getRect(find.byIcon(Icons.inbox_outlined));
+      _expectContains(_global(tester, settledRect), archiveIcon);
+      final label = tester.getRect(find.text('Archive'));
+      final capsule = _global(tester, settledRect);
+      expect(label.center.dx, inInclusiveRange(capsule.left, capsule.right));
+      expect(label.top, greaterThan(archiveIcon.center.dy));
       expect(_iconCenters(tester), homeIcons);
     },
   );
 
-  testWidgets('the default badge sits on the icon, not above it', (
+  testWidgets('a count badge sits on the upper trailing corner', (
     tester,
   ) async {
     await pumpNavigationBar(
@@ -326,9 +344,53 @@ void main() {
     );
     final icon = tester.getRect(find.byIcon(Icons.inbox_outlined));
     final badge = tester.getRect(find.text('12'));
-    expect(badge.center.dy, greaterThan(icon.top + 4));
-    expect(badge.center.dy, lessThan(icon.bottom));
-    expect(badge.center.dx, greaterThan(icon.center.dx - 2));
+    expect(badge.center.dy, lessThan(icon.top + 6));
+    expect(badge.center.dx, greaterThan(icon.right - 4));
+  });
+
+  testWidgets('a dot badge sits on the lower trailing corner', (tester) async {
+    await pumpNavigationBar(
+      tester,
+      items: sampleItems(withBadge: true),
+      currentIndex: 1,
+      onIndexChanged: (_) {},
+    );
+    final icon = tester.getRect(find.byIcon(Icons.search_rounded));
+    final dot = tester.getRect(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is SizedBox && widget.width == 8 && widget.height == 8,
+      ),
+    );
+    expect(dot.center.dy, greaterThan(icon.center.dy + 4));
+    expect(dot.center.dx, greaterThan(icon.center.dx + 4));
+  });
+
+  testWidgets('badges mirror to the leading edge in RTL', (tester) async {
+    await pumpNavigationBar(
+      tester,
+      items: sampleItems(withBadge: true),
+      currentIndex: 2,
+      onIndexChanged: (_) {},
+      textDirection: TextDirection.rtl,
+    );
+    final icon = tester.getRect(find.byIcon(Icons.inbox_outlined));
+    final badge = tester.getRect(find.text('12'));
+    expect(badge.center.dx, lessThan(icon.center.dx - 4));
+    expect(badge.center.dy, lessThan(icon.center.dy));
+  });
+
+  testWidgets('a custom badge offset still moves the count', (tester) async {
+    await pumpNavigationBar(
+      tester,
+      items: sampleItems(withBadge: true),
+      currentIndex: 2,
+      onIndexChanged: (_) {},
+      style: testStyle.copyWith(badgeOffset: const Offset(0, 14)),
+    );
+    final icon = tester.getRect(find.byIcon(Icons.inbox_outlined));
+    final badge = tester.getRect(find.text('12'));
+    expect(badge.center.dy, greaterThan(icon.top));
   });
 }
 
@@ -372,9 +434,9 @@ void _expectEqualOuterGap(
       : glass.right - indicator.right;
   expect(bottom, closeTo(top, 0.75));
   expect(side, closeTo(top, 0.75));
-  expect(top, inInclusiveRange(4, 10));
+  expect(top, inInclusiveRange(10, 22));
   expect(indicator.width, lessThan(glass.width / 2));
-  expect(indicator.height, lessThan(indicator.width));
+  expect(indicator.width, greaterThan(indicator.height * 1.3));
 }
 
 void _expectContains(Rect outer, Rect inner) {

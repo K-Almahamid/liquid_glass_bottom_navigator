@@ -6,7 +6,7 @@ import 'package:liquid_glass_bottom_navigator/src/navigation_layout.dart';
 import 'harness.dart';
 
 void main() {
-  testWidgets('the default bar width stops at 340', (tester) async {
+  testWidgets('the default bar width stops at 520', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
@@ -28,7 +28,37 @@ void main() {
       ),
     );
     await tester.pump();
-    expect(tester.getSize(find.byType(GlassSurface)).width, closeTo(340, 0.5));
+    expect(tester.getSize(find.byType(GlassSurface)).width, closeTo(520, 0.5));
+  });
+
+  testWidgets('a phone-width parent is not capped at 340', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Align(
+            alignment: Alignment.bottomCenter,
+            child: SizedBox(
+              width: 390,
+              child: LiquidGlassNavigationBar(
+                items: sampleItems(),
+                currentIndex: 0,
+                onIndexChanged: (_) {},
+                style: const LiquidGlassNavigationStyle(
+                  margin: EdgeInsets.zero,
+                  respectSafeArea: false,
+                  blurSigma: 0,
+                  elevation: 0,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    final width = tester.getSize(find.byType(GlassSurface)).width;
+    expect(width, greaterThan(360));
+    expect(width, lessThan(400));
   });
 
   testWidgets('adaptive theme follows brightness and explicit themes do not', (

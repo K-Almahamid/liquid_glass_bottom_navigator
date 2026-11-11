@@ -140,6 +140,12 @@ class _LiquidGlassNavigationBarState extends State<LiquidGlassNavigationBar>
 
   /// Last preview center, so a reverse move updates direction immediately.
   double? _lastPreviewCenter;
+
+  /// Smoothed drag direction, from -1 (left) through 0 (neutral) to 1 (right).
+  ///
+  /// The value eases toward the latest movement and decays when the finger
+  /// slows, so the droplet relaxes before it points the other way.
+  double _flow = 0;
   bool _movingRight = true;
 
   RenderLiquidNavigation? get _render {
@@ -250,6 +256,7 @@ class _LiquidGlassNavigationBarState extends State<LiquidGlassNavigationBar>
     _pointer = null;
     _downLocal = null;
     _lastPreviewCenter = null;
+    _flow = 0;
   }
 
   /// Records the grab offset only when the pointer starts on the selection.
@@ -282,6 +289,7 @@ class _LiquidGlassNavigationBarState extends State<LiquidGlassNavigationBar>
     _grabDx = event.localPosition.dx - origin.center.dx;
     _lastPreviewCenter = origin.center.dx;
     _movingRight = true;
+    _flow = 0;
   }
 
   void _onPointerMove(PointerMoveEvent event) {
@@ -337,10 +345,15 @@ class _LiquidGlassNavigationBarState extends State<LiquidGlassNavigationBar>
       _controller.stop();
     }
     final centerX = local.dx - _grabDx;
-    final previous = _lastPreviewCenter;
-    if (previous != null && (centerX - previous).abs() > 0.5) {
-      _movingRight = centerX > previous;
+    final previous = _lastPreviewCenter ?? centerX;
+    final delta = centerX - previous;
+    if (delta.abs() < 0.4) {
+      _flow *= 0.45;
+    } else {
+      final impulse = (delta / 16).clamp(-1.0, 1.0);
+      _flow = (_flow * 0.55 + impulse * 0.45).clamp(-1.0, 1.0);
     }
+    _movingRight = _flow >= 0;
     _lastPreviewCenter = centerX;
     final placement = liquidDragPlacement(
       slots: render.indicatorRects,
@@ -349,6 +362,7 @@ class _LiquidGlassNavigationBarState extends State<LiquidGlassNavigationBar>
       stretch: _canStretch,
       morphIntensity: widget.motion.morphIntensity,
       movingRight: _movingRight,
+      flow: _canStretch ? _flow : 0,
     );
     render.showDrag(
       placement.rect,
@@ -371,6 +385,7 @@ class _LiquidGlassNavigationBarState extends State<LiquidGlassNavigationBar>
     _pointer = null;
     _downLocal = null;
     _lastPreviewCenter = null;
+    _flow = 0;
     if (render == null || !render.attached) {
       _claimedIndex = null;
       return;

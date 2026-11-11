@@ -73,4 +73,50 @@ void main() {
     expect(clamped.rect.right, lessThanOrEqualTo(slots.last.right + 0.01));
     expect(clamped.rect.left, greaterThanOrEqualTo(slots.first.left - 0.01));
   });
+
+  test('drag flow relaxes to a pill before it points the other way', () {
+    final resting = liquidDragPlacement(
+      slots: slots,
+      origin: origin,
+      centerX: origin.center.dx + 20,
+      stretch: true,
+      morphIntensity: 1,
+      flow: 0,
+    );
+    expect(resting.blob, 0);
+    expect(resting.rect.center.dx, closeTo(origin.center.dx + 20, 0.5));
+
+    final right = liquidDragPlacement(
+      slots: slots,
+      origin: origin,
+      centerX: origin.center.dx + 20,
+      stretch: true,
+      morphIntensity: 1,
+      flow: 1,
+    );
+    final left = liquidDragPlacement(
+      slots: slots,
+      origin: origin,
+      centerX: origin.center.dx + 20,
+      stretch: true,
+      morphIntensity: 1,
+      flow: -1,
+    );
+    expect(right.blob, greaterThan(0.5));
+    expect(left.blob, closeTo(right.blob, 0.01));
+    expect(right.travelRight, isTrue);
+    expect(left.travelRight, isFalse);
+    expect(left.rect.center.dx, closeTo(right.rect.center.dx, 0.01));
+
+    final easing = liquidDragPlacement(
+      slots: slots,
+      origin: origin,
+      centerX: origin.center.dx + 20,
+      stretch: true,
+      morphIntensity: 1,
+      flow: 0.2,
+    );
+    expect(easing.blob, greaterThan(0));
+    expect(easing.blob, lessThan(right.blob));
+  });
 }

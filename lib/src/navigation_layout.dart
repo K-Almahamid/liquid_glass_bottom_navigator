@@ -175,6 +175,7 @@ class RenderLiquidNavigation extends RenderBox
   Rect? _from;
   List<Rect> _itemRects = const <Rect>[];
   List<Rect> _contentRects = const <Rect>[];
+  List<Rect> _iconRects = const <Rect>[];
   bool _contentDirty = true;
   Rect? _paintedIndicator;
   Path? _paintedPath;
@@ -439,6 +440,7 @@ class RenderLiquidNavigation extends RenderBox
       size = constraints.constrain(Size(width, minHeight.toDouble()));
       _itemRects = const <Rect>[];
       _contentRects = const <Rect>[];
+      _iconRects = const <Rect>[];
       _contentDirty = false;
       _remapFrom(previousSize);
       return;
@@ -562,16 +564,18 @@ class RenderLiquidNavigation extends RenderBox
     if (content.width <= 0 || content.height <= 0) {
       return slotLimit;
     }
-    // Horizontal margin widens the pill. Vertical margin stays smaller so the
-    // pill is flat. End items are placed so the glass gap matches on the top,
-    // the bottom, and the outer side. A short glass reduces the vertical
-    // margin instead of clipping.
-    final margins = _marginsFor(content);
+    // Horizontal margin widens the pill around the icon and label. Vertical
+    // margin hugs the icon only, so a label under the icon does not make a
+    // tall bubble. End items are placed so the glass gap matches on the top,
+    // the bottom, and the outer side.
+    final icon = index < _iconRects.length ? _iconRects[index] : content;
+    final verticalSource = icon.height > 0 ? icon : content;
+    final margins = _marginsFor(verticalSource);
     final hugged = Rect.fromLTRB(
       content.left - margins.horizontal,
-      content.top - margins.vertical,
+      verticalSource.top - margins.vertical,
       content.right + margins.horizontal,
-      content.bottom + margins.vertical,
+      verticalSource.bottom + margins.vertical,
     );
     final rect = hugged.intersect(slotLimit);
     if (rect.width <= 0 || rect.height <= 0) {
@@ -603,7 +607,33 @@ class RenderLiquidNavigation extends RenderBox
     }
     final children = _children;
     _contentRects = <Rect>[for (final child in children) _contentInRow(child)];
+    _iconRects = <Rect>[for (final child in children) _iconInRow(child)];
     _contentDirty = false;
+  }
+
+  Rect _iconInRow(RenderBox slotChild) {
+    final icon = _findIcon(slotChild);
+    if (icon == null || !icon.hasSize) {
+      return _contentInRow(slotChild);
+    }
+    return _offsetWithin(this, icon) & icon.size;
+  }
+
+  RenderIconAnchor? _findIcon(RenderObject node) {
+    if (node is RenderIconAnchor) {
+      return node;
+    }
+    if (node is RenderBadgeOverlay) {
+      return null;
+    }
+    RenderIconAnchor? found;
+    node.visitChildren((RenderObject child) {
+      if (found != null) {
+        return;
+      }
+      found = _findIcon(child);
+    });
+    return found;
   }
 
   Rect _contentInRow(RenderBox slotChild) {
@@ -633,6 +663,9 @@ class RenderLiquidNavigation extends RenderBox
   Rect _paintBounds(RenderBox root) {
     var bounds = Offset.zero & root.size;
     void visit(RenderBox box) {
+      if (box is RenderBadgeOverlay) {
+        return;
+      }
       if (box != root &&
           box.hasSize &&
           box.size.width > 0 &&
@@ -777,6 +810,13 @@ class RenderLiquidNavigation extends RenderBox
     defaultPaint(context, offset);
   }
 }
+
+/// Shared icon line. The capsule's vertical bounds follow this box, not the
+/// label under it.
+abstract class RenderIconAnchor extends RenderBox {}
+
+/// Badge paint that must not widen or shift the selection capsule.
+class RenderBadgeOverlay extends RenderProxyBox {}
 
 /// Horizontal and vertical capsule margins from [inset].
 ///
