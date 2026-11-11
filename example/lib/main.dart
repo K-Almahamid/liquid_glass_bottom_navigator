@@ -35,8 +35,75 @@ class _LiquidGlassExampleAppState extends State<LiquidGlassExampleApp> {
     _DestinationSpec('Profile', Icons.person_outline_rounded),
   ];
 
+  static const _capture = bool.fromEnvironment('CAPTURE');
+
   int _index = 0;
   ExampleControls _controls = const ExampleControls();
+
+  @override
+  void initState() {
+    super.initState();
+    if (_capture) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _captureTour();
+      });
+    }
+  }
+
+  /// Settled stills, then a short programmatic morph. Used only with
+  /// `--dart-define=CAPTURE=true`. It does not run in a normal gallery launch.
+  Future<void> _captureTour() async {
+    const light = ExampleControls(themeMode: ThemeMode.light);
+    Future<void> still(String name, ExampleControls controls, int index) async {
+      setState(() {
+        _controls = controls;
+        _index = index;
+      });
+      await Future<void>.delayed(const Duration(milliseconds: 1700));
+      debugPrint('CAPTURE $name');
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+    }
+
+    await still('light-always-inbox', light, 2);
+    await still(
+      'dark-always-inbox',
+      light.copyWith(themeMode: ThemeMode.dark),
+      2,
+    );
+    await still(
+      'light-hidden-home',
+      light.copyWith(labelMode: LiquidGlassLabelMode.hidden),
+      0,
+    );
+    await still(
+      'light-selected-inbox',
+      light.copyWith(labelMode: LiquidGlassLabelMode.selected),
+      2,
+    );
+    await still(
+      'dark-selected-profile',
+      light.copyWith(
+        themeMode: ThemeMode.dark,
+        labelMode: LiquidGlassLabelMode.selected,
+      ),
+      4,
+    );
+
+    setState(() {
+      _controls = light.copyWith(
+        indicatorStyle: LiquidGlassIndicatorStyle.morphingPill,
+      );
+      _index = 0;
+    });
+    await Future<void>.delayed(const Duration(milliseconds: 1200));
+    debugPrint('CAPTURE gif-start');
+    for (final index in <int>[2, 4, 0, 2]) {
+      await Future<void>.delayed(const Duration(milliseconds: 900));
+      setState(() => _index = index);
+    }
+    await Future<void>.delayed(const Duration(milliseconds: 1200));
+    debugPrint('CAPTURE gif-end');
+  }
 
   void _select(int index) => setState(() => _index = index);
 

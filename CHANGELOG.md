@@ -10,6 +10,7 @@
 * A count badge sits above the icon's trailing corner. A dot sits below that corner. `badgeOffset` defaults to zero and shifts either badge: positive x moves outward, positive y moves down.
 * `always` keeps every icon on one vertical line. `hidden` centers every icon in a capsule that matches the labeled size. `selected` centers unselected icons and raises the selected icon so its label fits under it; that icon-plus-label group stays centered in the capsule. The raise and the label fade follow the selection spring, including reduced motion. The example opens on `always`.
 * Indicator frames do not emit `onIndexChanged`. The bar owns one animation controller, and each selected-only label slot listens only while it is attached. Each paint measures destination content once; that measurement is not reused on the next paint.
+* The README preview images were recaptured from the example on an iPhone 18 Pro Max simulator. The GIF is a recording of programmatic selection, not a finger drag.
 
 ## 1.0.0
 

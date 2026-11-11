@@ -17,6 +17,8 @@ class BlurProfileWorkload extends StatefulWidget {
     required this.onFinished,
     this.warmup = const Duration(seconds: 2),
     this.recorded = const Duration(seconds: 10),
+    this.animate = true,
+    this.indicatorStyle = LiquidGlassIndicatorStyle.morphingPill,
     super.key,
   });
 
@@ -38,6 +40,12 @@ class BlurProfileWorkload extends StatefulWidget {
   /// Called once when the recorded window ends. The argument is how many
   /// selection changes happened during that window.
   final ValueChanged<int> onFinished;
+
+  /// Scrolls the feed and switches selection. False records a settled bar.
+  final bool animate;
+
+  /// Capsule motion for this run.
+  final LiquidGlassIndicatorStyle indicatorStyle;
 
   @override
   State<BlurProfileWorkload> createState() => _BlurProfileWorkloadState();
@@ -75,12 +83,14 @@ class _BlurProfileWorkloadState extends State<BlurProfileWorkload> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_alive) {
-        unawaited(_loopScroll());
-      }
-    });
-    if (widget.includeBar) {
+    if (widget.animate) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_alive) {
+          unawaited(_loopScroll());
+        }
+      });
+    }
+    if (widget.includeBar && widget.animate) {
       _switchTimer = Timer.periodic(const Duration(milliseconds: 400), (_) {
         if (!mounted) {
           return;
@@ -197,7 +207,7 @@ class _BlurProfileWorkloadState extends State<BlurProfileWorkload> {
                   onIndexChanged: (_) {},
                   items: _items,
                   labelMode: LiquidGlassLabelMode.always,
-                  indicatorStyle: LiquidGlassIndicatorStyle.morphingPill,
+                  indicatorStyle: widget.indicatorStyle,
                   hapticsEnabled: false,
                   style: LiquidGlassNavigationStyle(
                     blurSigma: widget.blurSigma,

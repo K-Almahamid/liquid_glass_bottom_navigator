@@ -8,12 +8,17 @@ The bar is controlled by your widget. It does not own a navigation stack, a rout
 
 ## Preview
 
-These frames are from the example on an iPhone 18 Pro Max simulator. The colored shapes are page content behind one backdrop blur. The GIF is the morphing indicator traveling from Home to Inbox and back.
+These frames are from the example on an iPhone 18 Pro Max simulator, iOS 27, after the indicator has settled. The page content sits behind one backdrop blur. The GIF is a screen recording of programmatic selection with the morphing capsule. It is not a finger drag.
 
-<img src="screenshots/light.png" alt="Light theme with Inbox selected" width="360">
-<img src="screenshots/dark.png" alt="Dark theme with Inbox selected" width="360">
+![Morphing capsule moving between Home, Inbox, and Profile](screenshots/liquid_animation.gif)
 
-![Morphing indicator moving between Home and Inbox](screenshots/liquid_animation.gif)
+<img src="screenshots/light.png" alt="Light theme, all labels, Inbox selected" width="240">
+<img src="screenshots/dark.png" alt="Dark theme, all labels, Inbox selected" width="240">
+
+<img src="screenshots/icons_only.png" alt="Light theme, icons only, Home selected" width="240">
+<img src="screenshots/selected_only.png" alt="Light theme, selected label only, Inbox selected" width="240">
+
+<img src="screenshots/bar.png" alt="Close-up of the light glass bar with Inbox selected" width="480">
 
 ## Install
 
@@ -199,7 +204,7 @@ The bar keeps a single animation controller and a single backdrop blur. The blur
 
 Blur cost depends on the device, the sigma, and how much of the screen the bar covers. Prefer a modest sigma. Do not stack more `BackdropFilter`s on top of this one.
 
-This repository does not include measured frame timings, and iPhone performance has not been verified. The example can record `FrameTiming` on macOS. The iOS simulator cannot build profile mode. To capture a physical iPhone, connect the device and run the same entry point only when you intend to install the example:
+One macOS profile run, Apple M3, macOS 27.2, Impeller, used a 16 ms frame budget. With blur sigma 18, a scrolling list, and a morphing capsule, the UI thread p50 was 0.26 ms and the raster thread p50 was 1.05 ms, with no budget misses in that 10 second window. A settled bar recorded no frames for 2 seconds. Eighty mount and unmount cycles left resident memory at the same level it started. Those numbers are desktop timings, not iPhone timings, and one resident-memory sample is not proof that nothing is retained. The iOS simulator cannot build profile mode. To repeat the run, or to run it on a physical iPhone you intend to install:
 
 ```bash
 cd example

@@ -6,6 +6,7 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
+import 'package:liquid_glass_bottom_navigator/liquid_glass_bottom_navigator.dart';
 import 'package:liquid_glass_bottom_navigator_example/profile_workload.dart';
 
 /// Profile entry point. It is not the gallery and it is not part of the
@@ -53,9 +54,24 @@ class _ProfileAppState extends State<_ProfileApp> {
       exit(1);
     }
 
+    _scenarios['idle_sigma_18'] = await _measure(
+      blurSigma: 18,
+      includeBar: true,
+      animate: false,
+      warmup: const Duration(milliseconds: 600),
+      recorded: const Duration(seconds: 2),
+    );
     _scenarios['scroll_only'] = await _measure(blurSigma: 0, includeBar: false);
     _scenarios['sigma_0'] = await _measure(blurSigma: 0, includeBar: true);
     _scenarios['sigma_18'] = await _measure(blurSigma: 18, includeBar: true);
+    _scenarios['slide_sigma_18'] = await _measure(
+      blurSigma: 18,
+      includeBar: true,
+      indicatorStyle: LiquidGlassIndicatorStyle.slidingPill,
+      warmup: const Duration(seconds: 1),
+      recorded: const Duration(seconds: 4),
+    );
+    _scenarios['memory_cycles'] = await _memoryCycles();
 
     final result = <String, dynamic>{
       'mode': 'profile',
@@ -73,9 +89,45 @@ class _ProfileAppState extends State<_ProfileApp> {
     exit(0);
   }
 
+  Future<Map<String, dynamic>> _memoryCycles() async {
+    final before = ProcessInfo.currentRss;
+    const cycles = 80;
+    for (var i = 0; i < cycles; i++) {
+      final done = Completer<int>();
+      setState(() {
+        _child = BlurProfileWorkload(
+          key: UniqueKey(),
+          blurSigma: 18,
+          includeBar: true,
+          animate: false,
+          warmup: const Duration(milliseconds: 16),
+          recorded: const Duration(milliseconds: 32),
+          onRecordStart: () {},
+          onFinished: done.complete,
+        );
+      });
+      await done.future;
+      setState(() => _child = const SizedBox.shrink());
+      await WidgetsBinding.instance.endOfFrame;
+    }
+    final after = ProcessInfo.currentRss;
+    await Future<void>.delayed(const Duration(seconds: 1));
+    return <String, dynamic>{
+      'cycles': cycles,
+      'rss_bytes_before': before,
+      'rss_bytes_after_cycles': after,
+      'rss_bytes_after_pause': ProcessInfo.currentRss,
+    };
+  }
+
   Future<Map<String, dynamic>> _measure({
     required double blurSigma,
     required bool includeBar,
+    bool animate = true,
+    Duration warmup = const Duration(seconds: 2),
+    Duration recorded = const Duration(seconds: 10),
+    LiquidGlassIndicatorStyle indicatorStyle =
+        LiquidGlassIndicatorStyle.morphingPill,
   }) async {
     final timings = <FrameTiming>[];
     final done = Completer<int>();
@@ -94,6 +146,10 @@ class _ProfileAppState extends State<_ProfileApp> {
         key: UniqueKey(),
         blurSigma: blurSigma,
         includeBar: includeBar,
+        animate: animate,
+        warmup: warmup,
+        recorded: recorded,
+        indicatorStyle: indicatorStyle,
         onRecordStart: () {
           recording = true;
           rssAtRecordStart = ProcessInfo.currentRss;
@@ -128,9 +184,13 @@ class _ProfileAppState extends State<_ProfileApp> {
   }) {
     if (timings.isEmpty) {
       return <String, dynamic>{
-        'error': 'no frame timings',
+        'frame_count': 0,
         'blur_sigma': blurSigma,
         'include_bar': includeBar,
+        'recorded_selection_changes': switches,
+        'rss_bytes_before_warmup': rssBefore,
+        'rss_bytes_at_record_start': rssAtRecordStart,
+        'rss_bytes_after': rssAfter,
       };
     }
     final build = timings.map((frame) => frame.buildDuration).toList()..sort();
