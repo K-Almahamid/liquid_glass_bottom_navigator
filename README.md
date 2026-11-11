@@ -56,7 +56,7 @@ LiquidGlassNavigationBar(
 
 Place the bar over content, usually in a `Stack`, and leave space at the bottom of scrollables. Give the parent a bounded width. The default width is that parent width after the bar's margin. It does not force a full-screen width.
 
-`currentIndex` is the selection. `onIndexChanged` fires when a tap, or a completed drag, requests a different item. Programmatic index changes animate the indicator and do not play haptics. Tapping the already selected item does nothing. Building the bar does not call `onIndexChanged`.
+`currentIndex` is the selection. `onIndexChanged` fires when a tap, or a completed drag, requests a different item. Changing `currentIndex` from the parent animates the indicator and does not call `onIndexChanged` or play haptics. Indicator frames are not selection events. Tapping the already selected item does nothing. Building the bar does not call `onIndexChanged`.
 
 ## Drag to select
 

@@ -181,11 +181,31 @@ class RenderLiquidNavigation extends RenderBox
   Rect? _from;
   List<Rect> _itemRects = const <Rect>[];
   List<Rect> _contentRects = const <Rect>[];
+
+  /// True after a walk until the next layout or paint starts.
+  ///
+  /// One paint reads the capsule target and the travel direction. Both need
+  /// the same content bounds, so the second read reuses this walk. The flag
+  /// is cleared at the start of every paint, which is when a label can have
+  /// changed size without laying this row out again.
+  bool _contentFresh = false;
   Rect? _paintedIndicator;
   Path? _paintedPath;
   Rect? _dragRect;
   double _dragBlob = 0;
   bool? _dragTravelRight;
+
+  /// Paint calls since [debugResetFrameCounters]. Test instrumentation only.
+  static int debugPaintCount = 0;
+
+  /// Content-tree walks since [debugResetFrameCounters]. Test instrumentation only.
+  static int debugContentWalkCount = 0;
+
+  /// Clears [debugPaintCount] and [debugContentWalkCount].
+  static void debugResetFrameCounters() {
+    debugPaintCount = 0;
+    debugContentWalkCount = 0;
+  }
 
   /// Slot rectangles from the latest layout, in local coordinates.
   List<Rect> get debugItemRects => List<Rect>.unmodifiable(_itemRects);
@@ -425,6 +445,7 @@ class RenderLiquidNavigation extends RenderBox
 
   @override
   void performLayout() {
+    _contentFresh = false;
     final previousSize = hasSize ? size : Size.zero;
     final children = _children;
     final count = children.length;
@@ -643,10 +664,15 @@ class RenderLiquidNavigation extends RenderBox
   }
 
   void _ensureContentRects() {
-    // Measured on every paint. Each item is a relayout boundary, so a label
-    // that takes its final width after the first layout recenters the icon
-    // without laying this row out again. A cached rect would stay on the old
-    // icon box and the capsule would settle off-center at the ends.
+    if (_contentFresh) {
+      return;
+    }
+    _contentFresh = true;
+    debugContentWalkCount++;
+    // Measured on every paint. The row's second layout pass is tight, so a
+    // label that grows inside a slot does not lay this row out again. A cached
+    // rect would stay on the old icon box and the capsule would settle
+    // off-center at the ends.
     final children = _children;
     _contentRects = <Rect>[for (final child in children) _contentInRow(child)];
   }
@@ -799,6 +825,8 @@ class RenderLiquidNavigation extends RenderBox
 
   @override
   void paint(PaintingContext context, Offset offset) {
+    debugPaintCount++;
+    _contentFresh = false;
     final indicator = _visualRect();
     _paintedIndicator = indicator;
     _paintedPath = null;

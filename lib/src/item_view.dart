@@ -474,6 +474,8 @@ class _RenderLabelSlot extends RenderProxyBox {
   @override
   void attach(PipelineOwner owner) {
     super.attach(owner);
+    // One listener while attached. detach removes it. The bar owns the
+    // controller and disposes it after these slots detach.
     _animation.addListener(_onTick);
   }
 

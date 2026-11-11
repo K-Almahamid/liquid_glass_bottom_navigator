@@ -69,6 +69,9 @@ class LiquidGlassNavigationBar extends StatefulWidget {
   /// not change its own selection. A drag calls this once, on release, and
   /// only when the finger is inside a different destination. If the parent
   /// keeps the old index, the indicator returns to it.
+  ///
+  /// Indicator frames and label springs do not call this. A programmatic
+  /// [currentIndex] change does not call this either.
   final ValueChanged<int>? onIndexChanged;
 
   /// Dimensions, blur, and indicator geometry.
@@ -488,6 +491,9 @@ class _LiquidGlassNavigationBarState extends State<LiquidGlassNavigationBar>
 
   @override
   void dispose() {
+    // Children unmount before State.dispose. The row removes its animation
+    // listener while this controller is still alive. This method then releases
+    // the one ticker this state owns.
     _disposed = true;
     _endDragTracking();
     _controller.stop();
