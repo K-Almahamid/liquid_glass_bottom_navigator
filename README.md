@@ -112,11 +112,11 @@ A child that wins the gesture arena, such as its own button, can block the item 
 
 `LiquidGlassLabelMode`:
 
-- `hidden` hides every label and does not reserve a label band. Every icon is centered in the glass, and the capsule is centered on the selected icon. The capsule width follows the icon and stays a horizontal pill. Screen readers still hear the destination name.
+- `hidden` hides every label. The selected capsule keeps the size of that destination's labeled capsule, and the icon is centered in the capsule and in the glass. Screen readers still hear the destination name.
 - `always` shows every label that was provided. Each icon and label is centered as one group, so the icons share one vertical line. The selected capsule wraps that icon and the whole label.
 - `selected` shows a label only on the selected item. Unselected icons are centered in the glass. The selected icon moves up to make room for its label, and that icon-plus-label group stays centered in the capsule. The move follows the selection spring. A drag preview does not label a destination until the parent adopts it.
 
-Items without labels are valid in every mode. All three modes share the bar size. They do not share one icon line: `hidden` centers icons, `always` centers icon-plus-label groups, and `selected` does both depending on the item. `hidden` wraps the icon, then widens the capsule around that icon when the result would be round. The bar height does not jump when the selection or the label mode changes. On the first and last destinations, the capsule's distance to the glass matches on the top, the bottom, and the outer side when the slot can hold that inset. A narrow slot or large text keeps the capsule inside the glass, centered on the visible content, instead of forcing the gap.
+Items without labels are valid in every mode. All three modes share the bar size. They do not share one icon line: `hidden` centers the icon inside the labeled capsule size, `always` centers icon-plus-label groups, and `selected` does both depending on the item. Hiding labels removes the text. It does not shrink the selected capsule. The bar height does not jump when the selection or the label mode changes. On the first and last destinations, the capsule's distance to the glass matches on the top, the bottom, and the outer side when the slot can hold that inset. A narrow slot or large text keeps the capsule inside the glass, centered on the visible content, instead of forcing the gap.
 
 ## Layout and glass
 

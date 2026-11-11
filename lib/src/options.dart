@@ -3,13 +3,15 @@
 /// Items without a label stay valid in every mode. The bar height does not
 /// change with the mode or the selection. Icon positions do: [hidden] centers
 /// every icon in the glass, and [selected] centers unselected icons while the
-/// selected icon rises to make room for its label.
+/// selected icon rises to make room for its label. Hiding a label changes what
+/// is drawn, not the selected capsule's size.
 enum LiquidGlassLabelMode {
   /// Hide every label, including items that provide one.
   ///
-  /// No label band is reserved. Every icon, including the selected one, is
-  /// centered in the glass, and the capsule is centered on that icon. The
-  /// capsule stays a horizontal pill. Spoken labels stay on the semantics node.
+  /// No label is built and none is reserved under the icon. The selected
+  /// capsule keeps the size it would have with that destination's label, and
+  /// the icon is centered in the capsule and in the glass. Spoken labels stay
+  /// on the semantics node.
   hidden,
 
   /// Show every item that provides a label.

@@ -20,6 +20,7 @@ class LiquidNavigationItemView extends StatelessWidget {
     required this.selected,
     required this.labelMode,
     required this.reserveLabelLine,
+    required this.matchLabeledCapsule,
     required this.labelAnimation,
     required this.labelFrom,
     required this.labelTo,
@@ -51,6 +52,9 @@ class LiquidNavigationItemView extends StatelessWidget {
   /// Icon-only destinations in that mode keep the band so every icon stays on
   /// one line. The other modes do not reserve it.
   final bool reserveLabelLine;
+
+  /// Icons-only capsule uses the labeled column's size. The icon stays centered.
+  final bool matchLabeledCapsule;
 
   /// Selection spring. Selected-only labels grow and fade with this value.
   final Animation<double> labelAnimation;
@@ -139,43 +143,72 @@ class LiquidNavigationItemView extends StatelessWidget {
       iconExtent: style.iconSize,
       textDirection: direction,
       child: NavigationContent(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: <Widget>[
-            _IconBand(
-              height: style.iconSize,
-              child: Stack(
-                clipBehavior: Clip.none,
-                alignment: Alignment.center,
-                children: <Widget>[
-                  ?visual,
-                  if (badge != null && badge.isVisible)
-                    _badgePosition(
-                      badge,
-                      style.badgeOffset,
-                      _BadgeOverlay(
-                        child: _BadgeView(
-                          badge: badge,
-                          style: style,
-                          theme: theme,
+        child: _matchCapsule(
+          context,
+          foreground: foreground,
+          label: label,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: <Widget>[
+              _IconBand(
+                height: style.iconSize,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  alignment: Alignment.center,
+                  children: <Widget>[
+                    ?visual,
+                    if (badge != null && badge.isVisible)
+                      _badgePosition(
+                        badge,
+                        style.badgeOffset,
+                        _BadgeOverlay(
+                          child: _BadgeView(
+                            badge: badge,
+                            style: style,
+                            theme: theme,
+                          ),
                         ),
                       ),
-                    ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            if (reserveLabelLine) ...<Widget>[
-              SizedBox(height: style.labelSpacing),
-              SizedBox(
-                height: labelHeight,
-                width: label == null || labelMode == LiquidGlassLabelMode.hidden
-                    ? null
-                    : _labelSlotWidth(context, label, foreground),
-                child: label == null || labelMode == LiquidGlassLabelMode.hidden
-                    ? null
-                    : Opacity(
-                        opacity: showLabelText ? 1 : 0,
+              if (reserveLabelLine) ...<Widget>[
+                SizedBox(height: style.labelSpacing),
+                SizedBox(
+                  height: labelHeight,
+                  width:
+                      label == null || labelMode == LiquidGlassLabelMode.hidden
+                      ? null
+                      : _labelSlotWidth(context, label, foreground),
+                  child:
+                      label == null || labelMode == LiquidGlassLabelMode.hidden
+                      ? null
+                      : Opacity(
+                          opacity: showLabelText ? 1 : 0,
+                          child: Text(
+                            label,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.center,
+                            style: _labelStyle(foreground),
+                          ),
+                        ),
+                ),
+              ] else if (revealLabel)
+                _LabelSlot(
+                  animation: labelAnimation,
+                  index: index,
+                  fromIndex: labelFrom,
+                  toIndex: labelTo,
+                  bandWidth: _labelSlotWidth(context, label, foreground),
+                  bandHeight: style.labelSpacing + labelHeight,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: <Widget>[
+                      SizedBox(height: style.labelSpacing),
+                      SizedBox(
+                        height: labelHeight,
                         child: Text(
                           label,
                           maxLines: 1,
@@ -184,35 +217,34 @@ class LiquidNavigationItemView extends StatelessWidget {
                           style: _labelStyle(foreground),
                         ),
                       ),
-              ),
-            ] else if (revealLabel)
-              _LabelSlot(
-                animation: labelAnimation,
-                index: index,
-                fromIndex: labelFrom,
-                toIndex: labelTo,
-                bandWidth: _labelSlotWidth(context, label, foreground),
-                bandHeight: style.labelSpacing + labelHeight,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: <Widget>[
-                    SizedBox(height: style.labelSpacing),
-                    SizedBox(
-                      height: labelHeight,
-                      child: Text(
-                        label,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.center,
-                        style: _labelStyle(foreground),
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
+    );
+  }
+
+  /// Icons-only capsule box. The child stays the icon, centered in the size
+  /// the labeled column would have used.
+  Widget _matchCapsule(
+    BuildContext context, {
+    required Color foreground,
+    required String? label,
+    required Widget child,
+  }) {
+    if (!matchLabeledCapsule) {
+      return child;
+    }
+    final labelWidth = label != null && label.isNotEmpty
+        ? _labelSlotWidth(context, label, foreground)
+        : 0.0;
+    return _LabeledExtent(
+      minWidth: labelWidth,
+      extraHeight: style.labelSpacing + _labelSlotHeight(context, foreground),
+      child: child,
     );
   }
 
@@ -812,6 +844,150 @@ class _RenderClusterFrame extends RenderBox
       return maxDx;
     }
     return dx;
+  }
+
+  @override
+  void paint(PaintingContext context, Offset offset) {
+    final child = this.child;
+    if (child == null) {
+      return;
+    }
+    final parentData = child.parentData! as BoxParentData;
+    context.paintChild(child, offset + parentData.offset);
+  }
+
+  @override
+  void applyPaintTransform(RenderBox child, Matrix4 transform) {
+    final parentData = child.parentData! as BoxParentData;
+    transform.translateByDouble(
+      parentData.offset.dx,
+      parentData.offset.dy,
+      0,
+      1,
+    );
+  }
+
+  @override
+  bool hitTestChildren(BoxHitTestResult result, {required Offset position}) {
+    final child = this.child;
+    if (child == null) {
+      return false;
+    }
+    final parentData = child.parentData! as BoxParentData;
+    return result.addWithPaintOffset(
+      offset: parentData.offset,
+      position: position,
+      hitTest: (BoxHitTestResult result, Offset transformed) {
+        return child.hitTest(result, position: transformed);
+      },
+    );
+  }
+}
+
+/// Reports the labeled column size and centers the icon inside it.
+///
+/// Width is the wider of the icon and the measured label. Height adds the
+/// label band. No text is built, so the icon stays on the capsule center.
+class _LabeledExtent extends SingleChildRenderObjectWidget {
+  const _LabeledExtent({
+    required this.minWidth,
+    required this.extraHeight,
+    super.child,
+  });
+
+  final double minWidth;
+  final double extraHeight;
+
+  @override
+  _RenderLabeledExtent createRenderObject(BuildContext context) {
+    return _RenderLabeledExtent(minWidth: minWidth, extraHeight: extraHeight);
+  }
+
+  @override
+  void updateRenderObject(
+    BuildContext context,
+    _RenderLabeledExtent renderObject,
+  ) {
+    renderObject
+      ..minWidth = minWidth
+      ..extraHeight = extraHeight;
+  }
+}
+
+class _RenderLabeledExtent extends RenderBox
+    with RenderObjectWithChildMixin<RenderBox> {
+  _RenderLabeledExtent({required this._minWidth, required this._extraHeight});
+
+  @override
+  void setupParentData(RenderObject child) {
+    if (child.parentData is! BoxParentData) {
+      child.parentData = BoxParentData();
+    }
+  }
+
+  double _minWidth;
+  double _extraHeight;
+
+  double get minWidth => _minWidth;
+
+  set minWidth(double value) {
+    if (_minWidth == value) {
+      return;
+    }
+    _minWidth = value;
+    markNeedsLayout();
+  }
+
+  double get extraHeight => _extraHeight;
+
+  set extraHeight(double value) {
+    if (_extraHeight == value) {
+      return;
+    }
+    _extraHeight = value;
+    markNeedsLayout();
+  }
+
+  @override
+  double computeMinIntrinsicWidth(double height) => _extentWidth(height);
+
+  @override
+  double computeMaxIntrinsicWidth(double height) => _extentWidth(height);
+
+  double _extentWidth(double height) {
+    final childWidth = child?.getMaxIntrinsicWidth(height) ?? 0;
+    return math.max(childWidth, _minWidth);
+  }
+
+  @override
+  double computeMinIntrinsicHeight(double width) {
+    return (child?.getMinIntrinsicHeight(width) ?? 0) + _extraHeight;
+  }
+
+  @override
+  double computeMaxIntrinsicHeight(double width) {
+    return (child?.getMaxIntrinsicHeight(width) ?? 0) + _extraHeight;
+  }
+
+  @override
+  void performLayout() {
+    final child = this.child;
+    if (child == null) {
+      size = constraints.constrain(Size(_minWidth, _extraHeight));
+      return;
+    }
+    child.layout(
+      BoxConstraints(maxWidth: constraints.maxWidth),
+      parentUsesSize: true,
+    );
+    final width = math.max(child.size.width, _minWidth);
+    final height = child.size.height + _extraHeight;
+    size = constraints.constrain(Size(width, height));
+    final parentData = child.parentData! as BoxParentData;
+    parentData.offset = Offset(
+      (size.width - child.size.width) / 2,
+      (size.height - child.size.height) / 2,
+    );
   }
 
   @override

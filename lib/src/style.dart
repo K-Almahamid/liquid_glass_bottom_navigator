@@ -128,7 +128,7 @@ class LiquidGlassNavigationStyle {
   /// horizontal sides is the side margin, and the smaller of the two vertical
   /// sides is the top and bottom margin. The default is 14 by 3. The capsule
   /// wraps the visible icon and label, then adds this margin. Icons-only
-  /// mode wraps the icon and stays a horizontal pill. A capsule that would
+  /// mode keeps that same capsule size and centers the icon in it. A capsule that would
   /// otherwise be round is widened around the icon. A badge does not
   /// change those bounds. At the first and last destinations, the gap from the
   /// capsule to the glass matches the gap above and below it when the slot can

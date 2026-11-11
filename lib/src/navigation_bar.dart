@@ -524,10 +524,13 @@ class _LiquidGlassNavigationBarState extends State<LiquidGlassNavigationBar>
 
     // All-labels mode keeps one label band on every destination, including
     // destinations that have no label, so those icons stay on one line.
-    // Icons-only and unselected selected-only items do not reserve that band.
+    // Icons-only uses that band's measured size for the capsule only. The
+    // icon stays centered, and no label is built.
+    final anyLabel = widget.items.any(_hasLabel);
     final reserveLabelLine =
-        widget.labelMode == LiquidGlassLabelMode.always &&
-        widget.items.any(_hasLabel);
+        widget.labelMode == LiquidGlassLabelMode.always && anyLabel;
+    final matchLabeledCapsule =
+        widget.labelMode == LiquidGlassLabelMode.hidden && anyLabel;
     final layoutChild = LiquidNavigationLayout(
       key: _layoutKey,
       targetIndex: _effectiveIndex,
@@ -555,6 +558,7 @@ class _LiquidGlassNavigationBarState extends State<LiquidGlassNavigationBar>
             selected: i == _effectiveIndex,
             labelMode: widget.labelMode,
             reserveLabelLine: reserveLabelLine,
+            matchLabeledCapsule: matchLabeledCapsule,
             labelAnimation: _controller,
             labelFrom: _labelFrom,
             labelTo: _effectiveIndex,

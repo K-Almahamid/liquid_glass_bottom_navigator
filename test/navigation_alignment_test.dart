@@ -835,16 +835,22 @@ void main() {
         );
         expect(hidden.icon.center.dy, greaterThan(always.icon.center.dy + 2));
         expect(selected.icon.center.dy, closeTo(always.icon.center.dy, 0.5));
-        expect(hidden.capsule.height, lessThan(always.capsule.height - 4));
+        expect(hidden.capsule.height, closeTo(always.capsule.height, 0.5));
+        expect(hidden.capsule.width, closeTo(always.capsule.width, 0.5));
+        expect(hidden.capsule.left, closeTo(always.capsule.left, 0.75));
+        expect(hidden.capsule.top, closeTo(always.capsule.top, 0.75));
         expect(selected.capsule.height, closeTo(always.capsule.height, 0.5));
         expect(selected.capsule.width, closeTo(always.capsule.width, 0.5));
         expect(hidden.capsule.width, greaterThan(hidden.capsule.height * 1.3));
-        expect(hidden.capsule.width, lessThan(always.capsule.width));
         _expectContains(always.capsule, always.icon);
         _expectContains(hidden.capsule, hidden.icon);
         _expectContains(selected.capsule, selected.icon);
         expect(
           (hidden.capsule.center.dx - hidden.icon.center.dx).abs(),
+          lessThan(0.5),
+        );
+        expect(
+          (hidden.capsule.center.dy - hidden.icon.center.dy).abs(),
           lessThan(0.5),
         );
         final hiddenInset = hidden.icon.left - hidden.capsule.left;
@@ -869,10 +875,13 @@ void main() {
           final outerOnLeft = direction == TextDirection.ltr
               ? index == 0
               : index != 0;
-          final side = outerOnLeft
+          final hiddenSide = outerOnLeft
               ? hidden.capsule.left - glass.left
               : glass.right - hidden.capsule.right;
-          expect(side, closeTo(hidden.capsule.top - glass.top, 0.75));
+          final alwaysSide = outerOnLeft
+              ? always.capsule.left - glass.left
+              : glass.right - always.capsule.right;
+          expect(hiddenSide, closeTo(alwaysSide, 0.75));
         }
         if (index == 2) {
           expect(hidden.icon.center.dx, closeTo(always.icon.center.dx, 0.5));
@@ -886,6 +895,8 @@ void main() {
     final back = await measure(LiquidGlassLabelMode.selected, 2);
     final switchedGlass = tester.getRect(find.byType(GlassSurface)).center.dy;
     expect(switched.icon.center.dy, closeTo(switchedGlass, 0.75));
+    expect(switched.capsule.width, closeTo(before.capsule.width, 0.5));
+    expect(switched.capsule.height, closeTo(before.capsule.height, 0.5));
     expect(back.icon.center.dy, closeTo(before.icon.center.dy, 0.5));
     expect(switched.icon.center.dx, closeTo(before.icon.center.dx, 0.5));
     expect(back.icon.center.dx, closeTo(before.icon.center.dx, 0.5));
@@ -919,8 +930,9 @@ void main() {
     );
     expect(
       largeHidden.capsule.height,
-      lessThan(largeAlways.capsule.height - 4),
+      closeTo(largeAlways.capsule.height, 0.5),
     );
+    expect(largeHidden.capsule.width, closeTo(largeAlways.capsule.width, 0.5));
 
     final scaledAlways = await measure(
       LiquidGlassLabelMode.always,
@@ -947,7 +959,11 @@ void main() {
     );
     expect(
       scaledHidden.capsule.height,
-      lessThan(scaledAlways.capsule.height - 4),
+      closeTo(scaledAlways.capsule.height, 0.5),
+    );
+    expect(
+      scaledHidden.capsule.width,
+      closeTo(scaledAlways.capsule.width, 0.5),
     );
     expect(
       scaledSelected.capsule.height,
@@ -985,8 +1001,27 @@ void main() {
         _expectContains(capsule, tester.getRect(find.text('Profile')));
       } else {
         expect(find.text('Profile'), findsNothing);
+        expect(child.center.dy, closeTo(capsule.center.dy, 0.5));
       }
     }
+    Future<Rect> pumpCustom(LiquidGlassLabelMode mode) async {
+      await pumpNavigationBar(
+        tester,
+        items: custom,
+        currentIndex: 2,
+        onIndexChanged: (_) {},
+        labelMode: mode,
+        style: style,
+        surface: const Size(402, 240),
+      );
+      await tester.pump(const Duration(seconds: 1));
+      return _global(tester, indicatorRender(tester).debugIndicatorRect!);
+    }
+
+    final customAlways = await pumpCustom(LiquidGlassLabelMode.always);
+    final customHidden = await pumpCustom(LiquidGlassLabelMode.hidden);
+    expect(customHidden.width, closeTo(customAlways.width, 0.5));
+    expect(customHidden.height, closeTo(customAlways.height, 0.5));
 
     final plain = await measure(LiquidGlassLabelMode.hidden, 0);
     final badged = <LiquidGlassNavigationItem>[
