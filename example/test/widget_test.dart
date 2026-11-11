@@ -130,7 +130,7 @@ void main() {
     expect(find.text('Indicator'), findsOneWidget);
     expect(find.text('Light'), findsOneWidget);
     expect(find.text('System'), findsOneWidget);
-    expect(find.text('Hidden'), findsOneWidget);
+    expect(find.text('Icons only'), findsOneWidget);
     expect(find.text('Selected'), findsOneWidget);
     expect(find.text('Morph'), findsOneWidget);
     expect(find.text('Spring'), findsOneWidget);
@@ -161,7 +161,11 @@ void main() {
     await tester.pumpAndSettle();
     expect(_bar(tester).indicatorStyle, LiquidGlassIndicatorStyle.slidingPill);
 
-    await tester.tap(find.text('Always'));
+    await tester.tap(find.text('Icons only'));
+    await tester.pumpAndSettle();
+    expect(_bar(tester).labelMode, LiquidGlassLabelMode.hidden);
+
+    await tester.tap(find.text('All labels'));
     await tester.pumpAndSettle();
     expect(_bar(tester).labelMode, LiquidGlassLabelMode.always);
 

@@ -5,13 +5,20 @@
 /// change the bar height.
 enum LiquidGlassLabelMode {
   /// Hide every label, including items that provide one.
+  ///
+  /// The capsule wraps the icon or custom child. Spoken labels stay on the
+  /// semantics node.
   hidden,
 
   /// Show every item that provides a label.
+  ///
+  /// The selected capsule wraps that item's icon and label.
   always,
 
   /// Show a label only on the selected item. Other labels keep their layout
-  /// space and are not visible.
+  /// space and are not visible, so the icon line does not move.
+  ///
+  /// The selected capsule wraps that item's icon and label.
   selected,
 }
 

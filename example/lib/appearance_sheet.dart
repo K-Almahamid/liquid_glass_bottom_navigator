@@ -131,9 +131,9 @@ class AppearanceSheet extends StatelessWidget {
                         ],
                         selected: controls.labelMode,
                         labelOf: (mode) => switch (mode) {
-                          LiquidGlassLabelMode.hidden => 'Hidden',
+                          LiquidGlassLabelMode.hidden => 'Icons only',
                           LiquidGlassLabelMode.selected => 'Selected',
-                          LiquidGlassLabelMode.always => 'Always',
+                          LiquidGlassLabelMode.always => 'All labels',
                         },
                         onChanged: (mode) =>
                             onChanged(controls.copyWith(labelMode: mode)),

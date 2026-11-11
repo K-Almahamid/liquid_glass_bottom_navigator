@@ -239,12 +239,13 @@ enum _SlotAnchor { start, center, end }
 
 /// Places the icon and label cluster.
 ///
-/// Every destination centers its icon on the glass, so a label under the icon
-/// cannot move it. The first and last destinations sit in from the glass by
-/// the same amount as the capsule's top and bottom gaps. [breathX] is the
-/// horizontal capsule margin and [breathY] is the vertical one. [iconExtent]
-/// is the shared icon-line height. Middle destinations stay centered in
-/// their slots.
+/// Every destination uses the same column, so icons stay on one line. When a
+/// label line is reserved, that column is the icon plus the label. When it is
+/// not, the column is the icon. The column is placed so the capsule around it
+/// has the same gap above, below, and, for the first and last destinations,
+/// on the outer side. [breathX] and [breathY] are those capsule margins.
+/// [iconExtent] is the shared icon-line height. A column that does not fit
+/// the inset stays inside the slot.
 class _ClusterFrame extends SingleChildRenderObjectWidget {
   const _ClusterFrame({
     required this.anchor,
@@ -438,13 +439,17 @@ class _RenderClusterFrame extends RenderBox
     size = constraints.constrain(Size(width, height));
 
     final glassHeight = size.height + _barPadding.vertical;
-    final room = (glassHeight - _iconExtent) / 2;
+    final column = child.size.height;
+    final room = (glassHeight - column) / 2;
     final breathY = room <= 0 ? 0.0 : math.min(_breathY, room);
-    // Center the icon line in the glass. The label hangs below that line and
-    // may use the bottom padding. Clamping the whole column would push the
-    // icon back up.
-    final dy = glassHeight / 2 - _barPadding.top - _iconExtent / 2;
-    final dx = _dx(child.size.width, breathY, glassHeight);
+    final capsuleHeight = column + breathY * 2;
+    final gap = math.max(0.0, (glassHeight - capsuleHeight) / 2);
+    // Place the whole column, not the icon alone. Every item in this bar has
+    // the same column height, so the icon line does not move with selection.
+    final dy = column >= glassHeight
+        ? (glassHeight - column) / 2 - _barPadding.top
+        : gap + breathY - _barPadding.top;
+    final dx = _dx(child.size.width, column, breathY, glassHeight);
     final parentData = child.parentData! as BoxParentData;
     parentData.offset = Offset(dx, dy);
   }
@@ -452,15 +457,20 @@ class _RenderClusterFrame extends RenderBox
   /// Horizontal origin of the cluster inside this slot.
   ///
   /// End destinations are shifted so the capsule's outer edge matches its
-  /// top and bottom gaps. The capsule height is the icon line plus [breathY]
-  /// on both sides, not the label. The horizontal margin is [_breathX]. A
-  /// slot that cannot hold that inset keeps the cluster inside the slot.
-  double _dx(double childWidth, double breathY, double glassHeight) {
+  /// top and bottom gaps. The capsule height is the column plus [breathY] on
+  /// both sides. The horizontal margin is [_breathX]. A slot that cannot hold
+  /// that inset keeps the cluster inside the slot.
+  double _dx(
+    double childWidth,
+    double columnHeight,
+    double breathY,
+    double glassHeight,
+  ) {
     final breathX = _breathX;
     if (childWidth + breathX * 2 > size.width) {
       return math.max(0.0, (size.width - childWidth) / 2);
     }
-    final capsuleHeight = _iconExtent + breathY * 2;
+    final capsuleHeight = columnHeight + breathY * 2;
     final gap = math.max(0.0, (glassHeight - capsuleHeight) / 2);
     final double dx;
     switch (_anchor) {

@@ -41,7 +41,7 @@ class ExampleControls {
   /// Creates controls. Defaults match a calm phone bar with drag enabled.
   const ExampleControls({
     this.themeMode = ThemeMode.system,
-    this.labelMode = LiquidGlassLabelMode.selected,
+    this.labelMode = LiquidGlassLabelMode.always,
     this.indicatorStyle = LiquidGlassIndicatorStyle.morphingPill,
     this.motion = GalleryMotionPreset.spring,
     this.haptics = true,

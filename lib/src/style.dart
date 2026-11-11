@@ -122,16 +122,16 @@ class LiquidGlassNavigationStyle {
   /// Outer corner radius of the glass.
   final BorderRadiusGeometry borderRadius;
 
-  /// Breathing room around the selected icon, label, badge, and custom child.
+  /// Breathing room around the selected icon, label, and custom child.
   ///
   /// Horizontal and vertical insets are independent. The smaller of the two
   /// horizontal sides is the side margin, and the smaller of the two vertical
   /// sides is the top and bottom margin. The default is 14 by 3. The capsule
-  /// uses that horizontal margin around the icon and label, and the vertical
-  /// margin around the icon only, so the pill stays wide and short. A badge
-  /// does not change those bounds. At the first and last destinations, the
-  /// gap from the capsule to the glass matches the gap above and below the
-  /// capsule. A shorter bar reduces the vertical margin so the icon still fits.
+  /// wraps the visible icon and label, then adds this margin. A badge does not
+  /// change those bounds. At the first and last destinations, the gap from the
+  /// capsule to the glass matches the gap above and below it when the slot can
+  /// hold that inset. A shorter bar reduces the vertical margin so the content
+  /// still fits. Large text or a wide child can use the whole slot instead.
   final EdgeInsetsGeometry indicatorInset;
 
   /// Corner radius of the selection capsule.
