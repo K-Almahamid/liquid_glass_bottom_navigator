@@ -661,16 +661,16 @@ class _LiquidGlassNavigationBarState extends State<LiquidGlassNavigationBar>
       return;
     }
     final collapsing = target >= current;
-    // Collapse eases through the mid shape. Expand starts moving immediately
-    // so a short upward scroll does not feel like it stalled.
-    final full = collapsing ? 260 : 220;
+    // Both directions use the same soft curve. The remaining distance scales
+    // the duration, and a reversal starts from the current value.
+    final full = collapsing ? 420 : 380;
     final milliseconds = math.max(1, (full * (target - current).abs()).round());
     _morphingToward = target;
     _visibility!.stop();
     _visibility!.animateTo(
       target,
       duration: Duration(milliseconds: milliseconds),
-      curve: collapsing ? Curves.easeInOutCubic : Curves.easeOutCubic,
+      curve: Curves.easeInOut,
     );
   }
 

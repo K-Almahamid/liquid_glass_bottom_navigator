@@ -2,9 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:liquid_glass_bottom_navigator/liquid_glass_bottom_navigator.dart';
 
+import 'package:liquid_glass_bottom_navigator_example/gallery_widgets.dart';
 import 'package:liquid_glass_bottom_navigator_example/main.dart';
 
 void main() {
+  test('fractional slider values are not rounded to zero', () {
+    expect(formatGallerySliderValue(0.48), '0.48');
+    expect(formatGallerySliderValue(0.35), '0.35');
+    expect(formatGallerySliderValue(0), '0.00');
+    expect(formatGallerySliderValue(58), '58');
+    expect(formatGallerySliderValue(8), '8');
+  });
+
   testWidgets(
     'five destinations render and scrolling hides then shows the bar',
     (tester) async {
@@ -54,6 +63,11 @@ void main() {
       expect(tester.getTopLeft(bar), before);
       expect(_bar(tester).currentIndex, 0);
       expect(_bar(tester).enableScrollCollapse, isTrue);
+      expect(_bar(tester).material.mode, LiquidGlassRenderMode.refractive);
+      expect(_bar(tester).material.refractionStrength, 0.48);
+      expect(_bar(tester).material.edgeThickness, 0.46);
+      expect(_bar(tester).material.highlightIntensity, 0.32);
+      expect(_bar(tester).style.blurSigma, 8);
 
       final reveal = await tester.startGesture(
         tester.getCenter(find.byKey(const ValueKey('home-scroll'))),
@@ -203,6 +217,12 @@ void main() {
           .disableAnimations,
       isTrue,
     );
+
+    await reveal('Refraction');
+    expect(find.text('0.48'), findsWidgets);
+    expect(find.text('0.46'), findsWidgets);
+    expect(find.text('0.32'), findsWidgets);
+    expect(find.text('0'), findsNothing);
 
     await reveal('Equal slots');
     expect(find.text('Equal slots'), findsOneWidget);

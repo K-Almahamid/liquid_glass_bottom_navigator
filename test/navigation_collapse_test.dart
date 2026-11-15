@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:liquid_glass_bottom_navigator/src/collapse_morph.dart';
+import 'package:liquid_glass_bottom_navigator/src/navigation_layout.dart';
 
 import 'harness.dart';
 
@@ -886,7 +887,7 @@ void main() {
     await tester.pumpAndSettle();
     controller.collapse();
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 80));
+    await tester.pump(const Duration(milliseconds: 140));
     final morph = tester.renderObject<RenderCollapseMorph>(
       find.byType(CollapseMorph),
     );
@@ -965,6 +966,105 @@ void main() {
     expect(morph.debugVisual.width, greaterThan(0));
     expect(morph.debugVisual.height, greaterThan(0));
     expect(tester.takeException(), isNull);
+  });
+
+  test('content fade stays continuous through the morph', () {
+    expect(liquidCollapseContentFade(0), 0);
+    expect(liquidCollapseContentFade(1), 1);
+    expect(liquidCollapseContentFade(0.45), greaterThan(0.15));
+    expect(liquidCollapseContentFade(0.45), lessThan(0.85));
+    var previous = 0.0;
+    for (var step = 1; step <= 20; step++) {
+      final value = liquidCollapseContentFade(step / 20);
+      expect(value, greaterThanOrEqualTo(previous - 0.0001));
+      expect(value - previous, lessThan(0.2));
+      previous = value;
+    }
+  });
+
+  testWidgets('the glass contracts continuously around the selected icon', (
+    tester,
+  ) async {
+    final controller = LiquidGlassCollapseController();
+    addTearDown(controller.dispose);
+    await pumpNavigationBar(
+      tester,
+      items: sampleItems(),
+      currentIndex: 0,
+      onIndexChanged: (_) {},
+      enableScrollCollapse: true,
+      collapseController: controller,
+    );
+    await tester.pumpAndSettle();
+    controller.collapse();
+    await tester.pump();
+    var previousWidth = double.infinity;
+    var previousX = -1.0;
+    const marks = <int>[0, 36, 90, 180, 270, 324, 360];
+    var elapsed = 0;
+    for (final mark in marks) {
+      if (mark > elapsed) {
+        await tester.pump(Duration(milliseconds: mark - elapsed));
+        elapsed = mark;
+      }
+      final morph = tester.renderObject<RenderCollapseMorph>(
+        find.byType(CollapseMorph),
+      );
+      final origin = tester.getTopLeft(find.byType(CollapseMorph));
+      final visual = morph.debugVisual.shift(origin);
+      final icon = tester.getCenter(find.byIcon(Icons.home_rounded));
+      expect(visual.inflate(4).contains(icon), isTrue);
+      expect(visual.width, lessThanOrEqualTo(previousWidth + 0.5));
+      if (previousX >= 0) {
+        expect(icon.dx, greaterThanOrEqualTo(previousX - 0.5));
+        expect(previousWidth - visual.width, lessThan(140));
+      }
+      if (mark == 180) {
+        final fading = tester.widgetList<Opacity>(
+          find.ancestor(
+            of: find.text('Search'),
+            matching: find.byType(Opacity),
+          ),
+        );
+        expect(
+          fading.any(
+            (opacity) => opacity.opacity > 0.1 && opacity.opacity < 0.95,
+          ),
+          isTrue,
+        );
+      }
+      previousWidth = visual.width;
+      previousX = icon.dx;
+    }
+    await tester.pumpAndSettle();
+    final settled = tester.renderObject<RenderCollapseMorph>(
+      find.byType(CollapseMorph),
+    );
+    final settledOrigin = tester.getTopLeft(find.byType(CollapseMorph));
+    final icon = tester.getCenter(find.byIcon(Icons.home_rounded));
+    expect(
+      (icon - (settledOrigin + settled.debugVisual.center)).distance,
+      lessThan(12),
+    );
+    controller.expand();
+    await tester.pump();
+    var expandingWidth = tester
+        .renderObject<RenderCollapseMorph>(find.byType(CollapseMorph))
+        .debugVisual
+        .width;
+    for (final mark in <int>[40, 120, 220]) {
+      await tester.pump(
+        Duration(
+          milliseconds: mark == 40 ? 40 : mark - (mark == 120 ? 40 : 120),
+        ),
+      );
+      final width = tester
+          .renderObject<RenderCollapseMorph>(find.byType(CollapseMorph))
+          .debugVisual
+          .width;
+      expect(width, greaterThanOrEqualTo(expandingWidth - 0.5));
+      expandingWidth = width;
+    }
   });
 }
 

@@ -15,6 +15,18 @@ void main() {
     expect(material.refractionStrength, 0.35);
     expect(material, LiquidGlassMaterial.classic);
     expect(
+      LiquidGlassMaterial.refractive.mode,
+      LiquidGlassRenderMode.refractive,
+    );
+    expect(
+      LiquidGlassMaterial.refractive.variant,
+      LiquidGlassMaterialVariant.regular,
+    );
+    expect(LiquidGlassMaterial.refractive.refractionStrength, 0.48);
+    expect(LiquidGlassMaterial.refractive.edgeThickness, 0.46);
+    expect(LiquidGlassMaterial.refractive.highlightIntensity, 0.32);
+    expect(LiquidGlassMaterial.refractive, isNot(LiquidGlassMaterial.classic));
+    expect(
       () => LiquidGlassMaterial(refractionStrength: 2),
       throwsAssertionError,
     );

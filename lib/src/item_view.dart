@@ -1371,10 +1371,10 @@ class _BadgeView extends StatelessWidget {
   }
 }
 
-/// Fades a destination or its label during the first part of a collapse.
+/// Fades a destination or its label as the glass contracts.
 ///
-/// Opacity reaches zero before the glass is small, so a label does not sit
-/// on the selected icon. The child is not rebuilt on each tick.
+/// The fade follows [liquidCollapseContentFade], so it does not drop to
+/// zero at one progress value. The child is not rebuilt on each tick.
 class _CollapseFade extends StatelessWidget {
   const _CollapseFade({required this.animation, required this.child});
 
@@ -1387,8 +1387,10 @@ class _CollapseFade extends StatelessWidget {
       animation: animation,
       child: child,
       builder: (BuildContext context, Widget? child) {
-        final t = (animation.value / 0.45).clamp(0.0, 1.0);
-        return Opacity(opacity: 1 - t, child: child);
+        return Opacity(
+          opacity: 1 - liquidCollapseContentFade(animation.value),
+          child: child,
+        );
       },
     );
   }

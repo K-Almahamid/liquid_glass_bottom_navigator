@@ -240,14 +240,24 @@ class _LiquidGlassExampleAppState extends State<LiquidGlassExampleApp> {
     const pattern = GalleryBackdrop.pattern;
     Future<void> still(String name, ExampleControls controls) async {
       setState(() => _controls = controls);
-      await Future<void>.delayed(const Duration(milliseconds: 1600));
+      await Future<void>.delayed(const Duration(milliseconds: 900));
       debugPrint('CAPTURE $name');
-      await Future<void>.delayed(const Duration(milliseconds: 400));
+      await Future<void>.delayed(const Duration(milliseconds: 1800));
     }
 
     await still(
+      'glass-classic-page',
+      const ExampleControls(
+        glassMode: LiquidGlassRenderMode.classic,
+        backdrop: GalleryBackdrop.page,
+      ),
+    );
+    await still(
       'glass-classic-pattern',
-      const ExampleControls(backdrop: pattern),
+      const ExampleControls(
+        glassMode: LiquidGlassRenderMode.classic,
+        backdrop: pattern,
+      ),
     );
     await still(
       'glass-enhanced-pattern',
@@ -279,10 +289,39 @@ class _LiquidGlassExampleAppState extends State<LiquidGlassExampleApp> {
       ),
     );
     await still(
+      'glass-refractive-page',
+      const ExampleControls(
+        glassMode: LiquidGlassRenderMode.refractive,
+        backdrop: GalleryBackdrop.page,
+      ),
+    );
+    await still(
+      'glass-refractive-light',
+      const ExampleControls(
+        glassMode: LiquidGlassRenderMode.refractive,
+        backdrop: GalleryBackdrop.light,
+      ),
+    );
+    await still(
       'glass-refractive-ink',
       const ExampleControls(
         glassMode: LiquidGlassRenderMode.refractive,
         backdrop: GalleryBackdrop.dark,
+      ),
+    );
+    await still(
+      'glass-refractive-dark',
+      const ExampleControls(
+        themeMode: ThemeMode.dark,
+        glassMode: LiquidGlassRenderMode.refractive,
+        backdrop: GalleryBackdrop.page,
+      ),
+    );
+    await still(
+      'glass-enhanced-page',
+      const ExampleControls(
+        glassMode: LiquidGlassRenderMode.enhanced,
+        backdrop: GalleryBackdrop.page,
       ),
     );
     debugPrint('CAPTURE glass-done');

@@ -65,6 +65,19 @@ class LiquidGlassMaterial {
   /// The 1.1.0 blur and rim. No shader.
   static const LiquidGlassMaterial classic = LiquidGlassMaterial();
 
+  /// Refractive glass tuned so the edge effect is visible without maxing it.
+  ///
+  /// This is a starting point for demos. The default constructor stays
+  /// [classic], so existing callers are unchanged. The shader still falls
+  /// back to enhanced glass when the backend cannot sample the backdrop.
+  static const LiquidGlassMaterial refractive = LiquidGlassMaterial(
+    mode: LiquidGlassRenderMode.refractive,
+    variant: LiquidGlassMaterialVariant.regular,
+    refractionStrength: 0.48,
+    edgeThickness: 0.46,
+    highlightIntensity: 0.32,
+  );
+
   /// Backdrop blur, or the refractive shader when the backend allows it.
   final LiquidGlassRenderMode mode;
 
@@ -74,7 +87,8 @@ class LiquidGlassMaterial {
   /// How far edge samples move, from 0 to 1.
   ///
   /// Used by [LiquidGlassRenderMode.refractive]. The center of the glass
-  /// stays nearly still.
+  /// stays nearly still. 0 disables the shift. A value near 0.5 is enough
+  /// to see the rim on a patterned backdrop.
   final double refractionStrength;
 
   /// How wide the curved edge band is, from 0 to 1.

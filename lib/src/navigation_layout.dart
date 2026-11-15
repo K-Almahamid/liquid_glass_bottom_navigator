@@ -12,6 +12,15 @@ import 'options.dart';
 /// around its center so the silhouette stays a horizontal pill.
 const double liquidMinCapsuleAspect = 1.35;
 
+/// How far unselected content has faded at [progress].
+///
+/// 0 keeps the content. 1 hides it. The curve stays smooth, so labels and
+/// the selection capsule do not vanish at one progress threshold.
+double liquidCollapseContentFade(double progress) {
+  final x = ((progress - 0.08) / 0.70).clamp(0.0, 1.0);
+  return x * x * (3 - 2 * x);
+}
+
 /// Lays out navigation items and paints the selection capsule behind them.
 ///
 /// The capsule listens to [animation] and repaints without rebuilding items.
@@ -873,15 +882,22 @@ class RenderLiquidNavigation extends RenderBox
     _paintedIndicator = indicator;
     _paintedPath = null;
     final collapseT = _collapse?.value ?? 0;
-    final capsuleFade = collapseT <= 0
-        ? 1.0
-        : (1 - collapseT / 0.45).clamp(0.0, 1.0);
-    if (indicator != null && capsuleFade > 0) {
-      final radius = _cornerRadius(indicator);
+    final capsuleFade = 1 - liquidCollapseContentFade(collapseT);
+    var capsule = indicator;
+    if (capsule != null && collapseT > 0) {
+      final side = math.min(capsule.width, capsule.height);
+      capsule = Rect.lerp(
+        capsule,
+        Rect.fromCenter(center: capsule.center, width: side, height: side),
+        collapseT,
+      );
+    }
+    if (capsule != null && capsuleFade > 0) {
+      final radius = _cornerRadius(capsule);
       final amount = _blobAmount();
       final travelRight = _travelRight();
       final local = liquidBubblePath(
-        rect: indicator,
+        rect: capsule,
         cornerRadius: radius,
         blob: amount,
         travelRight: travelRight,

@@ -92,18 +92,16 @@ An empty `items` list draws the glass surface with no destinations. An index out
 
 ```dart
 LiquidGlassNavigationBar(
-  material: const LiquidGlassMaterial(
-    mode: LiquidGlassRenderMode.refractive,
-    variant: LiquidGlassMaterialVariant.regular,
-    refractionStrength: 0.35,
-  ),
+  material: LiquidGlassMaterial.refractive,
   // ...
 )
 ```
 
+`LiquidGlassMaterial.refractive` uses the regular variant with refraction 0.48, edge 0.46, and highlight 0.32. Those values are a balanced starting point. They are not the package default.
+
 `enhanced` is still a blur. It adds a theme-driven veil and a soft capsule highlight. It does not read the pixels behind the bar.
 
-`refractive` does read them, on Impeller only. The shader moves samples near the rounded edge and mixes a luminance veil into the fill. It does not recolor icons or labels. If the backend cannot build an image-filter shader, or the shader fails to load, the bar paints `enhanced`. Flutter does not expose a reduced-transparency flag. High contrast makes the enhanced and refractive fills more opaque. Classic is unchanged.
+`refractive` does read them, on Impeller only. The shader bends backdrop samples inward from the rounded rim and mixes a light luminance veil into the fill. The sample stays inside the clipped backdrop, because a sample past that edge is empty. The center of the glass barely moves. It does not recolor icons or labels, and it is not Apple's Liquid Glass. A high blur sigma softens the displacement because the sampled texture is already blurred. If the backend cannot build an image-filter shader, or the shader fails to load, the bar paints `enhanced`. Flutter does not expose a reduced-transparency flag. High contrast makes the enhanced and refractive fills more opaque. Classic is unchanged.
 
 ## Scroll collapse
 
@@ -132,7 +130,7 @@ Scrolling down asks the controller to collapse after about 12 logical pixels. Th
 
 You own `LiquidGlassCollapseController`. The bar listens to it and does not dispose it. Dispose the controller after the bar is gone, or clear `collapseController` first. `collapse`, `expand`, and `toggle` are silent when the target is already current. Call `expand()` when a screen should restore the full bar, including for someone who cannot scroll. Tapping the compact button does the same and does not emit `onIndexChanged`. Pass one controller to every scroll view that should drive the same bar. Keep an observer on each page that stays alive, and set `enabled` false on the pages that are not showing, so an idle page does not collapse the bar and its scroll offset stays put. The default observer listens to the vertical scrollable it wraps, not to a nested horizontal list. Wrap a nested vertical list itself, or pass `notificationPredicate`, when that list should drive the bar. `jumpTo` and `animateTo` are not treated as a user gesture.
 
-With `enableScrollCollapse` false, the bar stays expanded even if the controller's target is collapsed. A collapse requested during a destination drag waits until the drag ends. While the glass is moving or compact, only the visible shape takes hits, and the hidden destinations leave the semantics tree. The compact control is one button that expands the bar. Reduced motion jumps to the target shape. Classic, enhanced, and refractive glass all use the same morph. Refractive mode keeps one backdrop filter and updates the shader radii as the shape changes.
+With `enableScrollCollapse` false, the bar stays expanded even if the controller's target is collapsed. A collapse requested during a destination drag waits until the drag ends. While the glass is moving or compact, only the visible shape takes hits, and the hidden destinations leave the semantics tree. The compact control is one button that expands the bar. Reduced motion jumps to the target shape. Classic, enhanced, and refractive glass all use the same morph. A full collapse takes about 420 ms and a full expand about 380 ms, shortened when the shape is already partway there. Unselected labels and the selection capsule fade on a smooth curve while the glass contracts around the selected icon. Refractive mode keeps one backdrop filter and updates the shader radii as the shape changes.
 
 ## Items
 

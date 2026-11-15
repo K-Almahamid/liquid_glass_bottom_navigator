@@ -461,6 +461,18 @@ class _Segment extends StatelessWidget {
   }
 }
 
+/// Slider readout. Fractions stay visible. Whole numbers stay whole.
+String formatGallerySliderValue(double value) {
+  if (value.abs() < 1) {
+    return value.toStringAsFixed(2);
+  }
+  final nearest = value.roundToDouble();
+  if ((value - nearest).abs() < 0.001) {
+    return nearest.toInt().toString();
+  }
+  return value.toStringAsFixed(2);
+}
+
 /// Labeled slider. The label stays a stable finder for tests.
 class GallerySliderRow extends StatelessWidget {
   /// Creates a slider row.
@@ -514,7 +526,7 @@ class GallerySliderRow extends StatelessWidget {
                 ),
               ),
               Text(
-                '${value.round()}',
+                formatGallerySliderValue(value),
                 style: text.bodyLarge?.copyWith(color: colors.secondary),
               ),
             ],
