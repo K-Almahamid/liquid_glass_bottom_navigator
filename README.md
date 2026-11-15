@@ -86,6 +86,25 @@ An empty `items` list draws the glass surface with no destinations. An index out
 
 `respectSafeArea` defaults to true and adds the bottom view padding to the margin. Set it to false when the parent already places the bar inside the safe area. `semanticsLabel` names the tab bar. It does not replace item names.
 
+## Glass material
+
+`material` defaults to classic glass: one clipped backdrop blur, a tint, and a painted rim. That is the 1.1.0 surface.
+
+```dart
+LiquidGlassNavigationBar(
+  material: const LiquidGlassMaterial(
+    mode: LiquidGlassRenderMode.refractive,
+    variant: LiquidGlassMaterialVariant.regular,
+    refractionStrength: 0.35,
+  ),
+  // ...
+)
+```
+
+`enhanced` is still a blur. It adds a theme-driven veil and a soft capsule highlight. It does not read the pixels behind the bar.
+
+`refractive` does read them, on Impeller only. The shader moves samples near the rounded edge and mixes a luminance veil into the fill. It does not recolor icons or labels. If the backend cannot build an image-filter shader, or the shader fails to load, the bar paints `enhanced`. Flutter does not expose a reduced-transparency flag. High contrast makes the enhanced and refractive fills more opaque. Classic is unchanged.
+
 ## Scroll collapse
 
 Collapse is off unless `enableCollapse` is true. The default bar is the expanded 1.1.0 layout.

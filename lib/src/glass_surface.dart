@@ -3,6 +3,7 @@ import 'dart:ui';
 
 import 'package:flutter/widgets.dart';
 
+import 'material.dart';
 import 'style.dart';
 import 'theme.dart';
 
@@ -26,6 +27,8 @@ class GlassSurface extends StatelessWidget {
     required this.theme,
     required this.borderRadius,
     required this.child,
+    this.material = const LiquidGlassMaterial(),
+    this.refractiveFilter,
     super.key,
   });
 
@@ -41,9 +44,52 @@ class GlassSurface extends StatelessWidget {
   /// Item layout painted inside the glass.
   final Widget child;
 
+  /// Classic, enhanced, or refractive. Classic keeps the 1.1.0 paint.
+  final LiquidGlassMaterial material;
+
+  /// Composed backdrop shader. Null uses blur, or the enhanced fallback.
+  final ImageFilter? refractiveFilter;
+
+  bool get _classic =>
+      material.mode == LiquidGlassRenderMode.classic &&
+      refractiveFilter == null;
+
   @override
   Widget build(BuildContext context) {
-    final blurredChild = _surface(child);
+    if (_classic) {
+      return _classicTree();
+    }
+    final highContrast = MediaQuery.highContrastOf(context);
+    final shader = refractiveFilter;
+    final fill = glassFillTint(
+      material,
+      theme.resolvedGlassTint,
+      shaderActive: shader != null,
+      highContrast: highContrast,
+    );
+    final blurredChild = _surface(child, fill: fill, veil: shader == null);
+    final filter =
+        shader ??
+        (style.blurSigma <= 0
+            ? null
+            : ImageFilter.blur(
+                sigmaX: style.blurSigma,
+                sigmaY: style.blurSigma,
+              ));
+    return DecoratedBox(
+      decoration: _shadow(),
+      child: ClipRRect(
+        borderRadius: borderRadius,
+        clipBehavior: Clip.antiAlias,
+        child: filter == null
+            ? blurredChild
+            : BackdropFilter(filter: filter, child: blurredChild),
+      ),
+    );
+  }
+
+  Widget _classicTree() {
+    final blurredChild = _surface(child, fill: theme.resolvedGlassTint);
     return DecoratedBox(
       decoration: BoxDecoration(
         borderRadius: borderRadius,
@@ -73,10 +119,36 @@ class GlassSurface extends StatelessWidget {
     );
   }
 
-  Widget _surface(Widget child) {
+  BoxDecoration _shadow() {
+    return BoxDecoration(
+      borderRadius: borderRadius,
+      boxShadow: style.effectiveShadowBlur <= 0
+          ? const <BoxShadow>[]
+          : <BoxShadow>[
+              BoxShadow(
+                color: theme.shadowColor,
+                blurRadius: style.effectiveShadowBlur,
+                offset: style.effectiveShadowOffset,
+              ),
+            ],
+    );
+  }
+
+  Widget _surface(Widget child, {required Color fill, bool veil = false}) {
     return Stack(
       children: <Widget>[
-        Positioned.fill(child: ColoredBox(color: theme.resolvedGlassTint)),
+        Positioned.fill(child: ColoredBox(color: fill)),
+        if (veil)
+          Positioned.fill(
+            child: IgnorePointer(
+              child: CustomPaint(
+                painter: GlassVeilPainter(
+                  borderRadius: borderRadius,
+                  clear: material.variant == LiquidGlassMaterialVariant.clear,
+                ),
+              ),
+            ),
+          ),
         RepaintBoundary(child: child),
         if (style.borderWidth > 0)
           Positioned.fill(
@@ -92,6 +164,67 @@ class GlassSurface extends StatelessWidget {
           ),
       ],
     );
+  }
+}
+
+/// Tint used for enhanced glass, and a lighter veil over a live shader.
+Color glassFillTint(
+  LiquidGlassMaterial material,
+  Color resolved, {
+  required bool shaderActive,
+  required bool highContrast,
+}) {
+  if (material.mode == LiquidGlassRenderMode.classic && !shaderActive) {
+    return resolved;
+  }
+  var alpha = resolved.a;
+  if (material.variant == LiquidGlassMaterialVariant.clear) {
+    alpha *= 0.45;
+  } else {
+    alpha *= 0.82;
+  }
+  if (shaderActive) {
+    alpha *= 0.3;
+  }
+  if (highContrast) {
+    alpha = math.max(alpha, 0.9);
+  }
+  return resolved.withValues(alpha: alpha.clamp(0.0, 1.0));
+}
+
+/// Theme-driven top light and bottom shade. This does not sample the backdrop.
+class GlassVeilPainter extends CustomPainter {
+  /// Creates the enhanced veil.
+  const GlassVeilPainter({required this.borderRadius, required this.clear});
+
+  final BorderRadius borderRadius;
+  final bool clear;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (size.isEmpty) {
+      return;
+    }
+    final rect = Offset.zero & size;
+    final strength = clear ? 0.45 : 1.0;
+    final paint = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: <Color>[
+          const Color(0xFFFFFFFF).withValues(alpha: 0.16 * strength),
+          const Color(0x00FFFFFF),
+          const Color(0xFF000000).withValues(alpha: 0.06 * strength),
+        ],
+        stops: const <double>[0, 0.46, 1],
+      ).createShader(rect);
+    canvas.drawRRect(borderRadius.toRRect(rect), paint);
+  }
+
+  @override
+  bool shouldRepaint(GlassVeilPainter oldDelegate) {
+    return oldDelegate.borderRadius != borderRadius ||
+        oldDelegate.clear != clear;
   }
 }
 

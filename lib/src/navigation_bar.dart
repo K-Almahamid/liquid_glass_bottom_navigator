@@ -1,4 +1,4 @@
-import 'dart:ui' show SemanticsRole;
+import 'dart:ui' show ImageFilter, SemanticsRole;
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -7,7 +7,9 @@ import 'package:flutter/services.dart';
 
 import 'collapse_controller.dart';
 import 'collapse_frame.dart';
+import 'glass_shader.dart';
 import 'glass_surface.dart';
+import 'material.dart';
 import 'indicator_geometry.dart';
 import 'item.dart';
 import 'item_view.dart';
@@ -67,6 +69,7 @@ class LiquidGlassNavigationBar extends StatefulWidget {
     this.enableDragSelection = false,
     this.enableCollapse = false,
     this.collapseController,
+    this.material = const LiquidGlassMaterial(),
     this.semanticsLabel,
     super.key,
   });
@@ -141,6 +144,14 @@ class LiquidGlassNavigationBar extends StatefulWidget {
   /// starts expanded. Null while [enableCollapse] is false leaves the bar
   /// expanded.
   final LiquidGlassCollapseController? collapseController;
+
+  /// Glass renderer. [LiquidGlassMaterial.classic] is the 1.1.0 surface.
+  ///
+  /// [LiquidGlassRenderMode.enhanced] still uses backdrop blur and does not
+  /// sample pixels in a shader. [LiquidGlassRenderMode.refractive] displaces
+  /// the backdrop where Impeller supports image-filter shaders, and paints
+  /// the enhanced surface otherwise. Icons and labels keep [theme].
+  final LiquidGlassMaterial material;
 
   /// Spoken name for the bar itself.
   ///
@@ -767,6 +778,7 @@ class _LiquidGlassNavigationBarState extends State<LiquidGlassNavigationBar>
       indicatorBorderWidth: style.indicatorBorderWidth,
       morph: morph,
       morphIntensity: widget.motion.morphIntensity,
+      glassSheen: widget.material.mode != LiquidGlassRenderMode.classic,
       children: <Widget>[
         for (var i = 0; i < widget.items.length; i++)
           _collapseItem(
@@ -805,25 +817,49 @@ class _LiquidGlassNavigationBarState extends State<LiquidGlassNavigationBar>
       child: width == null ? row : SizedBox(width: width, child: row),
     );
     // Collapse stays off this branch so the approved glass tree is unchanged.
-    final Widget glass = widget.enableCollapse
-        ? CollapseFrame(
-            progress: progress,
-            selectedIndex: _effectiveIndex,
+    final glassRadius = widget.enableCollapse
+        ? BorderRadius.lerp(
+            radius,
+            BorderRadius.circular(style.minTouchTarget),
+            progress,
+          )!
+        : radius;
+    Widget glassFor(ImageFilter? refractiveFilter) {
+      if (widget.enableCollapse) {
+        return CollapseFrame(
+          progress: progress,
+          selectedIndex: _effectiveIndex,
+          style: style,
+          theme: theme,
+          borderRadius: glassRadius,
+          material: widget.material,
+          refractiveFilter: refractiveFilter,
+          highContrast: MediaQuery.highContrastOf(context),
+          child: RepaintBoundary(child: widthBox),
+        );
+      }
+      return GlassSurface(
+        style: style,
+        theme: theme,
+        borderRadius: glassRadius,
+        material: widget.material,
+        refractiveFilter: refractiveFilter,
+        child: widthBox,
+      );
+    }
+
+    final Widget glass =
+        widget.material.mode == LiquidGlassRenderMode.refractive
+        ? RefractiveGlassFilter(
+            material: widget.material,
             style: style,
             theme: theme,
-            borderRadius: BorderRadius.lerp(
-              radius,
-              BorderRadius.circular(style.minTouchTarget),
-              progress,
-            )!,
-            child: RepaintBoundary(child: widthBox),
+            borderRadius: glassRadius,
+            builder: (BuildContext context, ImageFilter? filter) {
+              return glassFor(filter);
+            },
           )
-        : GlassSurface(
-            style: style,
-            theme: theme,
-            borderRadius: radius,
-            child: widthBox,
-          );
+        : glassFor(null);
     final positioned = progress <= 0
         ? glass
         : GestureDetector(

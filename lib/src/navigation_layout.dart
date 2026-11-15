@@ -33,6 +33,7 @@ class LiquidNavigationLayout extends MultiChildRenderObjectWidget {
     required this.indicatorBorderWidth,
     required this.morph,
     required this.morphIntensity,
+    this.glassSheen = false,
     required super.children,
     super.key,
   });
@@ -85,6 +86,11 @@ class LiquidNavigationLayout extends MultiChildRenderObjectWidget {
   /// Stretch amount from `0` to `1`.
   final double morphIntensity;
 
+  /// Paints a soft top highlight on the capsule without changing its shape.
+  ///
+  /// Off for classic glass so the approved capsule paint stays the same.
+  final bool glassSheen;
+
   @override
   RenderLiquidNavigation createRenderObject(BuildContext context) {
     return RenderLiquidNavigation(
@@ -103,6 +109,7 @@ class LiquidNavigationLayout extends MultiChildRenderObjectWidget {
       indicatorBorderWidth: indicatorBorderWidth,
       morph: morph,
       morphIntensity: morphIntensity,
+      glassSheen: glassSheen,
     );
   }
 
@@ -126,7 +133,8 @@ class LiquidNavigationLayout extends MultiChildRenderObjectWidget {
       ..indicatorBorderColor = indicatorBorderColor
       ..indicatorBorderWidth = indicatorBorderWidth
       ..morph = morph
-      ..morphIntensity = morphIntensity;
+      ..morphIntensity = morphIntensity
+      ..glassSheen = glassSheen;
   }
 }
 
@@ -154,6 +162,7 @@ class RenderLiquidNavigation extends RenderBox
     required this._indicatorBorderWidth,
     required this._morph,
     required this._morphIntensity,
+    required this._glassSheen,
   }) {
     _animation.addListener(_handleTick);
   }
@@ -178,6 +187,7 @@ class RenderLiquidNavigation extends RenderBox
   double _indicatorBorderWidth;
   bool _morph;
   double _morphIntensity;
+  bool _glassSheen;
   Rect? _from;
   List<Rect> _itemRects = const <Rect>[];
   List<Rect> _contentRects = const <Rect>[];
@@ -365,6 +375,14 @@ class RenderLiquidNavigation extends RenderBox
       return;
     }
     _morphIntensity = value;
+    markNeedsPaint();
+  }
+
+  set glassSheen(bool value) {
+    if (_glassSheen == value) {
+      return;
+    }
+    _glassSheen = value;
     markNeedsPaint();
   }
 
@@ -849,6 +867,17 @@ class RenderLiquidNavigation extends RenderBox
           ..color = _indicatorBorderColor
           ..strokeWidth = _indicatorBorderWidth;
         context.canvas.drawPath(bubble, _stroke);
+      }
+      if (_glassSheen) {
+        final sheen = Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.25
+          ..shader = const LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: <Color>[Color(0x66FFFFFF), Color(0x00FFFFFF)],
+          ).createShader(bubble.getBounds());
+        context.canvas.drawPath(bubble, sheen);
       }
     }
     defaultPaint(context, offset);

@@ -1,5 +1,9 @@
 ## 1.2.0
 
+* Adds `LiquidGlassMaterial`. The default mode is `classic`, which is the 1.1.0 backdrop blur, tint, and painted rim.
+* `enhanced` keeps that blur and adds a theme-driven veil and capsule highlight. It does not sample backdrop pixels.
+* `refractive` displaces the backdrop near the glass edge on Impeller, through one composed blur and `ImageFilter.shader`. Other backends, a failed shader load, and the load itself paint `enhanced` instead. Icons and labels stay on the theme. High contrast makes the enhanced and refractive fills more opaque.
+* `regular` and `clear` change how much of the backdrop the fill keeps. Clear is the lighter of the two.
 * Adds optional scroll-aware collapse. `enableCollapse` defaults to false, so 1.1.0 bars stay expanded.
 * `LiquidGlassCollapseController` holds the expanded or collapsed target. `collapse`, `expand`, and `toggle` do not notify when the target is already current. The bar owns the animation. It does not dispose a controller the caller passed in.
 * `LiquidGlassScrollObserver` collapses on downward user scrolling and expands on upward scrolling, after 48 logical pixels in one direction. It ignores horizontal lists, nested scrollables at depth greater than 0, and programmatic `jumpTo` or `animateTo`. It does not consume scroll notifications.

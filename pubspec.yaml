@@ -30,3 +30,5 @@ screenshots:
     path: screenshots/dark.png
 
 flutter:
+  shaders:
+    - shaders/liquid_glass_refraction.frag

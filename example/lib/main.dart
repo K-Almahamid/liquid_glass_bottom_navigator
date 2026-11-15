@@ -1,3 +1,5 @@
+import 'dart:ui' show ImageFilter;
+
 import 'package:flutter/material.dart';
 import 'package:liquid_glass_bottom_navigator/liquid_glass_bottom_navigator.dart';
 
@@ -37,9 +39,21 @@ class _LiquidGlassExampleAppState extends State<LiquidGlassExampleApp> {
 
   static const _capture = bool.fromEnvironment('CAPTURE');
   static const _captureCollapse = bool.fromEnvironment('CAPTURE_COLLAPSE');
+  static const _glassCapture = String.fromEnvironment('GLASS_CAPTURE');
 
   int _index = 0;
-  ExampleControls _controls = const ExampleControls();
+  ExampleControls _controls = switch (_glassCapture) {
+    'classic' => const ExampleControls(backdrop: GalleryBackdrop.pattern),
+    'enhanced' => const ExampleControls(
+      glassMode: LiquidGlassRenderMode.enhanced,
+      backdrop: GalleryBackdrop.pattern,
+    ),
+    'refractive' => const ExampleControls(
+      glassMode: LiquidGlassRenderMode.refractive,
+      backdrop: GalleryBackdrop.pattern,
+    ),
+    _ => const ExampleControls(),
+  };
   final LiquidGlassCollapseController _collapse =
       LiquidGlassCollapseController();
 
@@ -55,6 +69,10 @@ class _LiquidGlassExampleAppState extends State<LiquidGlassExampleApp> {
     if (_captureCollapse) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _captureCollapseTour();
+      });
+    } else if (_glassCapture == 'tour') {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _captureGlassTour();
       });
     } else if (_capture) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -179,6 +197,61 @@ class _LiquidGlassExampleAppState extends State<LiquidGlassExampleApp> {
     debugPrint('CAPTURE collapse-done');
   }
 
+  /// Still comparison of the three glass modes. Used only with
+  /// `--dart-define=GLASS_CAPTURE=tour`.
+  Future<void> _captureGlassTour() async {
+    debugPrint('CAPTURE shader-filter ${ImageFilter.isShaderFilterSupported}');
+    const pattern = GalleryBackdrop.pattern;
+    Future<void> still(String name, ExampleControls controls) async {
+      setState(() => _controls = controls);
+      await Future<void>.delayed(const Duration(milliseconds: 1600));
+      debugPrint('CAPTURE $name');
+      await Future<void>.delayed(const Duration(milliseconds: 400));
+    }
+
+    await still(
+      'glass-classic-pattern',
+      const ExampleControls(backdrop: pattern),
+    );
+    await still(
+      'glass-enhanced-pattern',
+      const ExampleControls(
+        glassMode: LiquidGlassRenderMode.enhanced,
+        backdrop: pattern,
+      ),
+    );
+    await still(
+      'glass-refractive-pattern',
+      const ExampleControls(
+        glassMode: LiquidGlassRenderMode.refractive,
+        backdrop: pattern,
+      ),
+    );
+    await still(
+      'glass-refractive-clear',
+      const ExampleControls(
+        glassMode: LiquidGlassRenderMode.refractive,
+        glassVariant: LiquidGlassMaterialVariant.clear,
+        backdrop: pattern,
+      ),
+    );
+    await still(
+      'glass-refractive-gradient',
+      const ExampleControls(
+        glassMode: LiquidGlassRenderMode.refractive,
+        backdrop: GalleryBackdrop.gradient,
+      ),
+    );
+    await still(
+      'glass-refractive-ink',
+      const ExampleControls(
+        glassMode: LiquidGlassRenderMode.refractive,
+        backdrop: GalleryBackdrop.dark,
+      ),
+    );
+    debugPrint('CAPTURE glass-done');
+  }
+
   void _select(int index) => setState(() => _index = index);
 
   void _apply(ExampleControls next) {
@@ -289,6 +362,8 @@ class _GalleryShell extends StatelessWidget {
       body: Stack(
         clipBehavior: Clip.none,
         children: [
+          if (controls.backdrop != GalleryBackdrop.page)
+            Positioned.fill(child: _GalleryBackdrop(kind: controls.backdrop)),
           // Kept alive so each destination holds its own scroll offset.
           IndexedStack(
             index: index,
@@ -367,6 +442,7 @@ class _GalleryShell extends StatelessWidget {
               enableDragSelection: controls.dragSelection,
               enableCollapse: controls.scrollCollapse,
               collapseController: collapse,
+              material: controls.material,
               items: items,
               style: LiquidGlassNavigationStyle(
                 blurSigma: controls.blur,
@@ -410,4 +486,78 @@ class _GalleryShell extends StatelessWidget {
         : 0.0;
     return scaled + 12 + safe + 28;
   }
+}
+
+class _GalleryBackdrop extends StatelessWidget {
+  const _GalleryBackdrop({required this.kind});
+
+  final GalleryBackdrop kind;
+
+  @override
+  Widget build(BuildContext context) {
+    return switch (kind) {
+      GalleryBackdrop.page => const SizedBox.shrink(),
+      GalleryBackdrop.light => const ColoredBox(color: Color(0xFFF4F7F6)),
+      GalleryBackdrop.dark => const ColoredBox(color: Color(0xFF12171C)),
+      GalleryBackdrop.gradient => const DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: <Color>[Color(0xFFD7E7E2), Color(0xFFE7D7C4)],
+          ),
+        ),
+      ),
+      GalleryBackdrop.saturated => const DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: <Color>[Color(0xFF1F4D8F), Color(0xFFC4493A)],
+          ),
+        ),
+      ),
+      GalleryBackdrop.pattern => const CustomPaint(painter: _PatternPainter()),
+    };
+  }
+}
+
+class _PatternPainter extends CustomPainter {
+  const _PatternPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.drawRect(
+      Offset.zero & size,
+      Paint()..color = const Color(0xFFE7EEEA),
+    );
+    final paint = Paint()..color = const Color(0xFF2F6F62);
+    for (var i = 0; i < 8; i++) {
+      canvas.drawCircle(
+        Offset(size.width * (0.15 + (i % 4) * 0.22), 80.0 + i * 70),
+        28,
+        paint
+          ..color = Color.lerp(
+            const Color(0xFF2F6F62),
+            const Color(0xFFC46A3A),
+            i / 7,
+          )!,
+      );
+    }
+    final text = TextPainter(
+      text: const TextSpan(
+        text: 'behind the glass',
+        style: TextStyle(
+          color: Color(0xFF1C2A28),
+          fontSize: 28,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    text.paint(canvas, Offset(24, size.height - 120));
+  }
+
+  @override
+  bool shouldRepaint(covariant _PatternPainter oldDelegate) => false;
 }

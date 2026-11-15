@@ -6,6 +6,7 @@ import 'package:flutter/widgets.dart';
 
 import 'glass_surface.dart';
 import 'item_view.dart';
+import 'material.dart';
 import 'navigation_layout.dart';
 import 'style.dart';
 import 'theme.dart';
@@ -24,6 +25,9 @@ class CollapseFrame extends SingleChildRenderObjectWidget {
     required this.style,
     required this.theme,
     required this.borderRadius,
+    this.material = const LiquidGlassMaterial(),
+    this.refractiveFilter,
+    this.highContrast = false,
     required super.child,
     super.key,
   });
@@ -43,6 +47,15 @@ class CollapseFrame extends SingleChildRenderObjectWidget {
   /// Radius of the current glass shape.
   final BorderRadius borderRadius;
 
+  /// Classic keeps the 1.1.0 paint. Other modes adjust the fill.
+  final LiquidGlassMaterial material;
+
+  /// Live backdrop shader. Null keeps the blur.
+  final ImageFilter? refractiveFilter;
+
+  /// Raises the fill when the platform asks for higher contrast.
+  final bool highContrast;
+
   @override
   RenderCollapseFrame createRenderObject(BuildContext context) {
     return RenderCollapseFrame(
@@ -51,6 +64,9 @@ class CollapseFrame extends SingleChildRenderObjectWidget {
       style: style,
       theme: theme,
       borderRadius: borderRadius,
+      material: material,
+      refractiveFilter: refractiveFilter,
+      highContrast: highContrast,
     );
   }
 
@@ -65,7 +81,10 @@ class CollapseFrame extends SingleChildRenderObjectWidget {
       ..selectedIndex = selectedIndex
       ..style = style
       ..theme = theme
-      ..borderRadius = borderRadius;
+      ..borderRadius = borderRadius
+      ..material = material
+      ..refractiveFilter = refractiveFilter
+      ..highContrast = highContrast;
   }
 }
 
@@ -79,17 +98,25 @@ class RenderCollapseFrame extends RenderBox
     required LiquidGlassNavigationStyle style,
     required LiquidGlassNavigationTheme theme,
     required BorderRadius borderRadius,
+    required LiquidGlassMaterial material,
+    required this._refractiveFilter,
+    required bool highContrast,
   }) : _progress = progress, // ignore: prefer_initializing_formals
        _selectedIndex = selectedIndex, // ignore: prefer_initializing_formals
        _style = style, // ignore: prefer_initializing_formals
        _theme = theme, // ignore: prefer_initializing_formals
-       _borderRadius = borderRadius; // ignore: prefer_initializing_formals
+       _borderRadius = borderRadius, // ignore: prefer_initializing_formals
+       _material = material, // ignore: prefer_initializing_formals
+       _highContrast = highContrast; // ignore: prefer_initializing_formals
 
   double _progress;
   int? _selectedIndex;
   LiquidGlassNavigationStyle _style;
   LiquidGlassNavigationTheme _theme;
   BorderRadius _borderRadius;
+  LiquidGlassMaterial _material;
+  ImageFilter? _refractiveFilter;
+  bool _highContrast;
   Offset _anchor = Offset.zero;
 
   /// Current morph, from 0 expanded to 1 collapsed.
@@ -127,6 +154,30 @@ class RenderCollapseFrame extends RenderBox
       return;
     }
     _theme = value;
+    markNeedsPaint();
+  }
+
+  set material(LiquidGlassMaterial value) {
+    if (_material == value) {
+      return;
+    }
+    _material = value;
+    markNeedsPaint();
+  }
+
+  set refractiveFilter(ImageFilter? value) {
+    if (identical(_refractiveFilter, value)) {
+      return;
+    }
+    _refractiveFilter = value;
+    markNeedsPaint();
+  }
+
+  set highContrast(bool value) {
+    if (_highContrast == value) {
+      return;
+    }
+    _highContrast = value;
     markNeedsPaint();
   }
 
@@ -288,14 +339,17 @@ class RenderCollapseFrame extends RenderBox
       Offset.zero & size,
       _rrect,
       (PaintingContext context, Offset offset) {
-        if (_style.blurSigma > 0) {
+        final filter =
+            _refractiveFilter ??
+            (_style.blurSigma > 0
+                ? ImageFilter.blur(
+                    sigmaX: _style.blurSigma,
+                    sigmaY: _style.blurSigma,
+                  )
+                : null);
+        if (filter != null) {
           context.pushLayer(
-            BackdropFilterLayer(
-              filter: ImageFilter.blur(
-                sigmaX: _style.blurSigma,
-                sigmaY: _style.blurSigma,
-              ),
-            ),
+            BackdropFilterLayer(filter: filter),
             _paintContents,
             offset,
           );
@@ -307,10 +361,26 @@ class RenderCollapseFrame extends RenderBox
   }
 
   void _paintContents(PaintingContext context, Offset offset) {
+    final shaderActive = _refractiveFilter != null;
     context.canvas.drawRect(
       offset & size,
-      Paint()..color = _theme.resolvedGlassTint,
+      Paint()
+        ..color = glassFillTint(
+          _material,
+          _theme.resolvedGlassTint,
+          shaderActive: shaderActive,
+          highContrast: _highContrast,
+        ),
     );
+    if (!shaderActive && _material.mode != LiquidGlassRenderMode.classic) {
+      context.canvas.save();
+      context.canvas.translate(offset.dx, offset.dy);
+      GlassVeilPainter(
+        borderRadius: _borderRadius,
+        clear: _material.variant == LiquidGlassMaterialVariant.clear,
+      ).paint(context.canvas, size);
+      context.canvas.restore();
+    }
     final child = this.child;
     if (child != null) {
       context.paintChild(child, offset + _shift);
@@ -329,5 +399,6 @@ class RenderCollapseFrame extends RenderBox
   }
 
   @override
-  bool get alwaysNeedsCompositing => _style.blurSigma > 0;
+  bool get alwaysNeedsCompositing =>
+      _style.blurSigma > 0 || _refractiveFilter != null;
 }

@@ -6,6 +6,7 @@ The tune button opens Appearance. The controls are grouped and none of the previ
 
 - Appearance: theme, label mode, indicator style
 - Motion: spring, snappy, gentle, none, drag selection, scroll collapse, haptics, reduced motion
+- Glass: classic, enhanced, or refractive, with regular or clear fill and a comparison backdrop
 - Layout: equal or intrinsic slots, compact width, safe area, right to left, labels, item count
 - Dimensions: blur, height, radius, margin, padding, item spacing
 

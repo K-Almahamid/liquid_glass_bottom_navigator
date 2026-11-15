@@ -217,6 +217,91 @@ class AppearanceSheet extends StatelessWidget {
                   ],
                 ),
                 GallerySection(
+                  title: 'Glass',
+                  footer: 'Classic is the original blur. Enhanced is a theme veil. Refractive samples the backdrop where the renderer supports it.',
+                  children: [
+                    _Labeled(
+                      label: 'Mode',
+                      child: GallerySegmented<LiquidGlassRenderMode>(
+                        values: LiquidGlassRenderMode.values,
+                        selected: controls.glassMode,
+                        labelOf: (mode) => switch (mode) {
+                          LiquidGlassRenderMode.classic => 'Classic',
+                          LiquidGlassRenderMode.enhanced => 'Enhanced',
+                          LiquidGlassRenderMode.refractive => 'Refractive',
+                        },
+                        onChanged: (mode) =>
+                            onChanged(controls.copyWith(glassMode: mode)),
+                      ),
+                    ),
+                    _Labeled(
+                      label: 'Variant',
+                      child: GallerySegmented<LiquidGlassMaterialVariant>(
+                        values: LiquidGlassMaterialVariant.values,
+                        selected: controls.glassVariant,
+                        labelOf: (variant) => switch (variant) {
+                          LiquidGlassMaterialVariant.regular => 'Regular',
+                          LiquidGlassMaterialVariant.clear => 'Clear',
+                        },
+                        onChanged: (variant) =>
+                            onChanged(controls.copyWith(glassVariant: variant)),
+                      ),
+                    ),
+                    GallerySliderRow(
+                      label: 'Refraction',
+                      value: controls.refractionStrength,
+                      min: 0,
+                      max: 1,
+                      divisions: 20,
+                      onChanged: (value) => onChanged(
+                        controls.copyWith(refractionStrength: value),
+                      ),
+                    ),
+                    GallerySliderRow(
+                      label: 'Edge',
+                      value: controls.edgeThickness,
+                      min: 0,
+                      max: 1,
+                      divisions: 20,
+                      onChanged: (value) =>
+                          onChanged(controls.copyWith(edgeThickness: value)),
+                    ),
+                    GallerySliderRow(
+                      label: 'Highlight',
+                      value: controls.highlightIntensity,
+                      min: 0,
+                      max: 1,
+                      divisions: 20,
+                      onChanged: (value) => onChanged(
+                        controls.copyWith(highlightIntensity: value),
+                      ),
+                    ),
+                    GallerySettingRow(
+                      title: 'Adaptive tint',
+                      value: controls.adaptiveTint,
+                      onChanged: (value) =>
+                          onChanged(controls.copyWith(adaptiveTint: value)),
+                    ),
+                    _Labeled(
+                      label: 'Backdrop',
+                      child: GallerySegmented<GalleryBackdrop>(
+                        values: GalleryBackdrop.values,
+                        selected: controls.backdrop,
+                        labelOf: (backdrop) => switch (backdrop) {
+                          GalleryBackdrop.page => 'Page',
+                          GalleryBackdrop.light => 'White',
+                          GalleryBackdrop.dark => 'Ink',
+                          GalleryBackdrop.gradient => 'Gradient',
+                          GalleryBackdrop.saturated => 'Color',
+                          GalleryBackdrop.pattern => 'Pattern',
+                        },
+                        onChanged: (backdrop) =>
+                            onChanged(controls.copyWith(backdrop: backdrop)),
+                      ),
+                    ),
+                  ],
+                ),
+                GallerySection(
                   title: 'Layout',
                   children: [
                     GallerySettingRow(
