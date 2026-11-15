@@ -453,10 +453,15 @@ class RenderCollapseMorph extends RenderProxyBox {
           ..maskFilter = MaskFilter.blur(BlurStyle.normal, blur),
       );
     }
-    // The backdrop layer is only the current glass, so a refractive shader
-    // reads this shape's size rather than the expanded bar behind the clip.
+    // Classic and enhanced snapshot only the current glass. Refractive also
+    // snapshots a margin so the rim can read page pixels, then discards it.
     final local = Rect.fromLTWH(0, 0, visual.width, visual.height);
     final localRadius = radius;
+    final shader = _filter;
+    if (shader != null) {
+      _paintRefractive(context, offset, visual, local, localRadius, shader);
+      return;
+    }
     context.pushTransform(
       needsCompositing,
       offset,
@@ -472,14 +477,12 @@ class RenderCollapseMorph extends RenderProxyBox {
               _paintContents(context, offset, visual, localRadius);
             }
 
-            final filter =
-                _filter ??
-                (_style.blurSigma <= 0
-                    ? null
-                    : ui.ImageFilter.blur(
-                        sigmaX: _style.blurSigma,
-                        sigmaY: _style.blurSigma,
-                      ));
+            final filter = _style.blurSigma <= 0
+                ? null
+                : ui.ImageFilter.blur(
+                    sigmaX: _style.blurSigma,
+                    sigmaY: _style.blurSigma,
+                  );
             if (filter == null) {
               contents(context, offset);
               return;
@@ -491,6 +494,55 @@ class RenderCollapseMorph extends RenderProxyBox {
             );
           },
         );
+      },
+    );
+  }
+
+  void _paintRefractive(
+    PaintingContext context,
+    Offset offset,
+    Rect visual,
+    Rect local,
+    BorderRadius localRadius,
+    ui.ImageFilter shader,
+  ) {
+    final pad = refractiveLensMargin;
+    context.pushTransform(
+      needsCompositing,
+      offset,
+      Matrix4.translationValues(visual.left - pad, visual.top - pad, 0),
+      (PaintingContext context, Offset offset) {
+        final expanded = Rect.fromLTWH(
+          0,
+          0,
+          visual.width + pad * 2,
+          visual.height + pad * 2,
+        );
+        // The clip limits the snapshot. Without it the filter covers the
+        // screen, because this stack does not clip its children.
+        context.pushClipRect(needsCompositing, offset, expanded, (
+          PaintingContext context,
+          Offset offset,
+        ) {
+          context.pushLayer(BackdropFilterLayer(filter: shader), (
+            PaintingContext context,
+            Offset offset,
+          ) {
+            context.canvas.drawRect(
+              offset & expanded.size,
+              Paint()..color = const Color(0x00000000),
+            );
+            context.pushClipRRect(
+              needsCompositing,
+              offset + Offset(pad, pad),
+              local,
+              localRadius.toRRect(local),
+              (PaintingContext context, Offset offset) {
+                _paintContents(context, offset, visual, localRadius);
+              },
+            );
+          }, offset);
+        });
       },
     );
   }

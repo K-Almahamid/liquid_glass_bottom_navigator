@@ -6,7 +6,7 @@ The tune button opens Appearance. The controls are grouped and none of the previ
 
 - Appearance: theme, label mode, indicator style
 - Motion: spring, snappy, gentle, none, drag selection, scroll collapse, haptics, reduced motion
-- Glass: classic, enhanced, or refractive, with regular or clear fill and a comparison backdrop. The gallery opens on refractive regular glass (refraction 0.58, edge 0.52, highlight 0.36) and blur 8. Pattern, ink, gradient, and color are also drawn in the band behind the bar. Classic and enhanced stay available. Slider readouts keep two digits for values below 1.
+- Glass: classic, enhanced, or refractive, with regular or clear fill and a comparison backdrop. The gallery opens on refractive regular glass (refraction 0.58, edge 0.52, highlight 0.36) and blur 8. Regular diffuses the interior more than clear. The rim reads a margin of the page around the bar. Pattern, ink, gradient, and color are also drawn in the band behind the bar. Classic and enhanced stay available. Slider readouts keep two digits for values below 1.
 - Layout: equal or intrinsic slots, compact width, safe area, right to left, labels, item count
 - Dimensions: blur, height, radius, margin, padding, item spacing
 

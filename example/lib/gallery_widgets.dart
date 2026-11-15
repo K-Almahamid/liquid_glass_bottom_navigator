@@ -571,6 +571,53 @@ class GalleryScrollView extends StatefulWidget {
 
 class _GalleryScrollViewState extends State<GalleryScrollView> {
   final ScrollController _controller = ScrollController();
+  static bool _opticalProbeClaimed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    const probe = String.fromEnvironment('GLASS_CAPTURE');
+    if (probe == 'scroll' && !_opticalProbeClaimed) {
+      _opticalProbeClaimed = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _opticalProbe();
+      });
+    }
+  }
+
+  /// Moves the home list under a stationary bar. Scroll collapse stays off
+  /// for this capture, so the morph does not run. This is not a finger drag.
+  Future<void> _opticalProbe() async {
+    await Future<void>.delayed(const Duration(milliseconds: 800));
+    if (!mounted || !_controller.hasClients) {
+      debugPrint('DONE');
+      return;
+    }
+    final max = _controller.position.maxScrollExtent;
+    debugPrint('CAPTURE scroll-rest');
+    await Future<void>.delayed(const Duration(milliseconds: 700));
+    await _controller.animateTo(
+      max * 0.42,
+      duration: const Duration(milliseconds: 2400),
+      curve: Curves.linear,
+    );
+    debugPrint('CAPTURE scroll-mid');
+    await Future<void>.delayed(const Duration(milliseconds: 400));
+    await _controller.animateTo(
+      max,
+      duration: const Duration(milliseconds: 2000),
+      curve: Curves.linear,
+    );
+    debugPrint('CAPTURE scroll-end');
+    await Future<void>.delayed(const Duration(milliseconds: 400));
+    await _controller.animateTo(
+      0,
+      duration: const Duration(milliseconds: 2600),
+      curve: Curves.linear,
+    );
+    debugPrint('CAPTURE scroll-return');
+    debugPrint('DONE');
+  }
 
   @override
   void dispose() {

@@ -119,17 +119,54 @@ class RefractiveGlassFilter extends StatefulWidget {
   State<RefractiveGlassFilter> createState() => _RefractiveGlassFilterState();
 }
 
-/// How much blur is applied after the refractive shader.
+/// Logical pixels of backdrop kept around the painted glass.
 ///
-/// The full [blurSigma] is not applied first. Doing that removes the detail
-/// the lens is meant to bend. A small soften after the shader only hides
-/// aliasing. Classic glass does not use this function.
+/// The shader reads this margin and discards it, so the bar's layout size
+/// does not change. Classic glass does not use it.
+const double refractiveLensMargin = 18;
+
+/// Outward normal of a rounded rectangle.
+///
+/// Y grows downward, so the top edge is `(0, -1)` and the bottom edge is
+/// `(0, 1)`. This matches [surface_normal] in the refraction shader.
+@visibleForTesting
+Offset refractiveSurfaceNormal(Offset pixel, Size size, double radius) {
+  double box(Offset point) {
+    final limit = math.min(size.width, size.height) / 2;
+    final r = radius.clamp(0.0, limit);
+    final half = Offset(size.width / 2, size.height / 2);
+    final q = Offset(
+      point.dx.abs() - half.dx + r,
+      point.dy.abs() - half.dy + r,
+    );
+    final outside = Offset(math.max(q.dx, 0), math.max(q.dy, 0));
+    return math.min(math.max(q.dx, q.dy), 0) + outside.distance - r;
+  }
+
+  final point = pixel - Offset(size.width / 2, size.height / 2);
+  const delta = 1.0;
+  final dx =
+      box(point + const Offset(delta, 0)) - box(point - const Offset(delta, 0));
+  final dy =
+      box(point + const Offset(0, delta)) - box(point - const Offset(0, delta));
+  final len = math.sqrt(dx * dx + dy * dy);
+  if (len < 0.0001) {
+    return const Offset(0, -1);
+  }
+  return Offset(dx / len, dy / len);
+}
+
+/// Blur applied after the refractive shader.
+///
+/// Interior diffusion lives in the shader, so a second blur would soften the
+/// rim. The parameter remains so callers can pass the style sigma. Classic
+/// glass does not use this function.
 @visibleForTesting
 double refractiveSoftenSigma(double blurSigma) {
-  if (blurSigma <= 0) {
+  if (blurSigma.isNaN) {
     return 0;
   }
-  return math.min(blurSigma * 0.08, 1.2);
+  return 0;
 }
 
 class _RefractiveGlassFilterState extends State<RefractiveGlassFilter> {
@@ -189,7 +226,7 @@ class _RefractiveGlassFilterState extends State<RefractiveGlassFilter> {
         '${material.refractionStrength}:${material.edgeThickness}:'
         '${material.highlightIntensity}:${material.variant}:'
         '${material.adaptiveTint}:${tint.r},${tint.g},${tint.b},${tint.a}:'
-        '${widget.style.blurSigma}:$dpr';
+        '${widget.style.blurSigma}:$dpr:$refractiveLensMargin';
     if (_cached != null && _cacheKey == key) {
       return _cached;
     }
@@ -214,7 +251,8 @@ class _RefractiveGlassFilterState extends State<RefractiveGlassFilter> {
       )
       ..setFloat(14, material.adaptiveTint ? 1 : 0)
       ..setFloat(15, 0.2)
-      ..setFloat(16, -1);
+      ..setFloat(16, -1)
+      ..setFloat(17, refractiveLensMargin * dpr);
     final ui.ImageFilter filtered;
     try {
       filtered = ui.ImageFilter.shader(shader);
@@ -234,8 +272,8 @@ class _RefractiveGlassFilterState extends State<RefractiveGlassFilter> {
         'variant=${material.variant.name}',
       );
     }
-    // Shader first, then a light soften. Blur-then-shader was washing out
-    // the bend. Classic still blurs on its own path.
+    // The shader diffuses its own interior. A blur around it would wash
+    // the rim. Classic still blurs on its own path.
     final soften = refractiveSoftenSigma(widget.style.blurSigma);
     final filter = soften < 0.2
         ? filtered

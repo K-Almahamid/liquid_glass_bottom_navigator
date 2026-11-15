@@ -26,8 +26,8 @@ void main() {
     expect(LiquidGlassMaterial.refractive.edgeThickness, 0.52);
     expect(LiquidGlassMaterial.refractive.highlightIntensity, 0.36);
     expect(refractiveSoftenSigma(0), 0);
-    expect(refractiveSoftenSigma(18), lessThan(1.21));
-    expect(refractiveSoftenSigma(18), greaterThan(1));
+    expect(refractiveSoftenSigma(18), 0);
+    expect(refractiveLensMargin, greaterThan(8));
     expect(LiquidGlassMaterial.refractive, isNot(LiquidGlassMaterial.classic));
     expect(
       () => LiquidGlassMaterial(refractionStrength: 2),
@@ -164,4 +164,53 @@ void main() {
       expect(RefractiveGlassFilter.program, isNotNull);
     },
   );
+
+  test('edge normals point out of the rounded glass', () {
+    const wide = Size(320, 64);
+    final top = refractiveSurfaceNormal(const Offset(160, 2), wide, 32);
+    final bottom = refractiveSurfaceNormal(const Offset(160, 62), wide, 32);
+    final left = refractiveSurfaceNormal(const Offset(2, 32), wide, 32);
+    final right = refractiveSurfaceNormal(const Offset(318, 32), wide, 32);
+    expect(top.dy, lessThan(-0.8));
+    expect(top.dx.abs(), lessThan(0.2));
+    expect(bottom.dy, greaterThan(0.8));
+    expect(left.dx, lessThan(-0.8));
+    expect(right.dx, greaterThan(0.8));
+
+    final corner = refractiveSurfaceNormal(const Offset(8, 8), wide, 32);
+    expect(corner.dx, lessThan(0));
+    expect(corner.dy, lessThan(0));
+    expect((corner.distance - 1).abs(), lessThan(0.05));
+
+    const circle = Size(64, 64);
+    final circleTop = refractiveSurfaceNormal(const Offset(32, 2), circle, 32);
+    final circleBottom = refractiveSurfaceNormal(
+      const Offset(32, 62),
+      circle,
+      32,
+    );
+    expect(circleTop.dy, lessThan(-0.8));
+    expect(circleBottom.dy, greaterThan(0.8));
+
+    const morphing = Size(180, 52);
+    final midTop = refractiveSurfaceNormal(const Offset(90, 2), morphing, 18);
+    final midBottom = refractiveSurfaceNormal(
+      const Offset(90, 50),
+      morphing,
+      18,
+    );
+    expect(midTop.dy, lessThan(-0.8));
+    expect(midBottom.dy, greaterThan(0.8));
+
+    const small = Size(48, 36);
+    final smallTop = refractiveSurfaceNormal(const Offset(24, 1), small, 40);
+    expect(smallTop.dy, lessThan(0));
+    const large = Size(800, 72);
+    final largeBottom = refractiveSurfaceNormal(
+      const Offset(400, 70),
+      large,
+      36,
+    );
+    expect(largeBottom.dy, greaterThan(0.8));
+  });
 }

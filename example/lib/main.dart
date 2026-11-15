@@ -53,6 +53,7 @@ class _LiquidGlassExampleAppState extends State<LiquidGlassExampleApp> {
       glassMode: LiquidGlassRenderMode.refractive,
       backdrop: GalleryBackdrop.pattern,
     ),
+    'scroll' => const ExampleControls(scrollCollapse: false),
     _ => const ExampleControls(),
   };
   final LiquidGlassCollapseController _collapse =
@@ -264,6 +265,25 @@ class _LiquidGlassExampleAppState extends State<LiquidGlassExampleApp> {
           backdrop: pattern,
         ),
       );
+      await still(
+        'glass-classic-pattern',
+        const ExampleControls(
+          glassMode: LiquidGlassRenderMode.classic,
+          backdrop: pattern,
+        ),
+      );
+      await still('glass-refractive-page', const ExampleControls());
+      setState(() {
+        _controls = const ExampleControls(
+          glassMode: LiquidGlassRenderMode.refractive,
+          backdrop: pattern,
+        );
+      });
+      _collapse.collapse();
+      await Future<void>.delayed(const Duration(milliseconds: 700));
+      debugPrint('CAPTURE glass-refractive-compact');
+      await Future<void>.delayed(const Duration(milliseconds: 1400));
+      _collapse.expand();
       debugPrint('CAPTURE glass-done');
       return;
     }
