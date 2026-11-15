@@ -6,7 +6,7 @@
 library;
 
 export 'src/badge.dart';
-export 'src/visibility_controller.dart';
+export 'src/collapse_controller.dart';
 export 'src/item.dart' show LiquidGlassNavigationItem;
 export 'src/material.dart';
 export 'src/motion.dart';

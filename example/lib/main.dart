@@ -1,6 +1,7 @@
 import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:liquid_glass_bottom_navigator/liquid_glass_bottom_navigator.dart';
 
 import 'appearance_sheet.dart';
@@ -54,12 +55,12 @@ class _LiquidGlassExampleAppState extends State<LiquidGlassExampleApp> {
     ),
     _ => const ExampleControls(),
   };
-  final LiquidGlassVisibilityController _visibility =
-      LiquidGlassVisibilityController();
+  final LiquidGlassCollapseController _collapse =
+      LiquidGlassCollapseController();
 
   @override
   void dispose() {
-    _visibility.dispose();
+    _collapse.dispose();
     super.dispose();
   }
 
@@ -136,66 +137,87 @@ class _LiquidGlassExampleAppState extends State<LiquidGlassExampleApp> {
     debugPrint('CAPTURE gif-end');
   }
 
-  /// Slide stills driven by the visibility controller.
+  /// Morph stills driven by the collapse controller.
   ///
   /// Used only with `--dart-define=CAPTURE_AUTOHIDE=true`. These frames are
   /// the same animation a scroll would start. They are not a finger scroll.
   Future<void> _captureAutoHideTour() async {
     const light = ExampleControls(
       themeMode: ThemeMode.light,
-      scrollAutoHide: true,
+      scrollCollapse: true,
     );
     Future<void> show(
       String name,
       ExampleControls controls,
       int index, {
-      bool? hidden,
+      bool? collapsed,
     }) async {
       setState(() {
         _controls = controls;
         _index = index;
       });
-      if (hidden == true) {
-        _visibility.hide();
-      } else if (hidden == false) {
-        _visibility.show();
+      if (collapsed == true) {
+        _collapse.collapse();
+      } else if (collapsed == false) {
+        _collapse.expand();
       }
-      await Future<void>.delayed(const Duration(milliseconds: 900));
+      await Future<void>.delayed(const Duration(milliseconds: 400));
       debugPrint('CAPTURE $name');
-      await Future<void>.delayed(const Duration(milliseconds: 250));
+      await Future<void>.delayed(const Duration(milliseconds: 1800));
     }
 
-    await show('autohide-visible', light, 0, hidden: false);
-    _visibility.hide();
-    await Future<void>.delayed(const Duration(milliseconds: 120));
-    debugPrint('CAPTURE autohide-mid-hide');
-    await Future<void>.delayed(const Duration(milliseconds: 700));
-    debugPrint('CAPTURE autohide-hidden');
-    _visibility.show();
-    await Future<void>.delayed(const Duration(milliseconds: 140));
-    debugPrint('CAPTURE autohide-mid-show');
-    await Future<void>.delayed(const Duration(milliseconds: 700));
-    await show('autohide-restored', light, 0, hidden: false);
-    await show(
-      'autohide-dark',
-      light.copyWith(themeMode: ThemeMode.dark),
-      0,
-      hidden: false,
-    );
-    await show(
-      'autohide-icons',
-      light.copyWith(labelMode: LiquidGlassLabelMode.hidden),
-      0,
-      hidden: false,
-    );
-    await show(
-      'autohide-selected',
-      light.copyWith(labelMode: LiquidGlassLabelMode.selected),
-      2,
-      hidden: false,
-    );
-    await show('autohide-rtl', light.copyWith(rtl: true), 0, hidden: false);
-    debugPrint('CAPTURE autohide-done');
+    await show('collapse-expanded', light, 0, collapsed: false);
+    try {
+      timeDilation = 12;
+      _collapse.collapse();
+      await Future<void>.delayed(const Duration(milliseconds: 1800));
+      debugPrint('CAPTURE collapse-mid');
+      await Future<void>.delayed(const Duration(milliseconds: 1800));
+      timeDilation = 1;
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+      debugPrint('CAPTURE collapse-compact');
+      await Future<void>.delayed(const Duration(milliseconds: 1800));
+      setState(() => _index = 2);
+      await Future<void>.delayed(const Duration(milliseconds: 400));
+      debugPrint('CAPTURE collapse-inbox');
+      await Future<void>.delayed(const Duration(milliseconds: 1800));
+      timeDilation = 12;
+      _collapse.expand();
+      await Future<void>.delayed(const Duration(milliseconds: 2000));
+      debugPrint('CAPTURE collapse-mid-expand');
+      await Future<void>.delayed(const Duration(milliseconds: 1800));
+      timeDilation = 1;
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+      await show('collapse-restored', light, 2, collapsed: false);
+      await show(
+        'collapse-dark',
+        light.copyWith(themeMode: ThemeMode.dark),
+        0,
+        collapsed: true,
+      );
+      await show(
+        'collapse-refractive',
+        light.copyWith(glassMode: LiquidGlassRenderMode.refractive),
+        0,
+        collapsed: true,
+      );
+      await show(
+        'collapse-icons',
+        light.copyWith(labelMode: LiquidGlassLabelMode.hidden),
+        0,
+        collapsed: false,
+      );
+      await show(
+        'collapse-selected',
+        light.copyWith(labelMode: LiquidGlassLabelMode.selected),
+        2,
+        collapsed: false,
+      );
+      await show('collapse-rtl', light.copyWith(rtl: true), 0, collapsed: true);
+      debugPrint('CAPTURE collapse-done');
+    } finally {
+      timeDilation = 1;
+    }
   }
 
   /// Still comparison of the three glass modes. Used only with
@@ -254,13 +276,13 @@ class _LiquidGlassExampleAppState extends State<LiquidGlassExampleApp> {
   }
 
   void _select(int index) {
-    _visibility.show();
+    _collapse.expand();
     setState(() => _index = index);
   }
 
   void _apply(ExampleControls next) {
-    if (!next.scrollAutoHide) {
-      _visibility.show();
+    if (!next.scrollCollapse) {
+      _collapse.expand();
     }
     setState(() {
       _controls = next;
@@ -292,7 +314,7 @@ class _LiquidGlassExampleAppState extends State<LiquidGlassExampleApp> {
                 readControls: () => _controls,
                 onSelect: _select,
                 onApply: _apply,
-                visibility: _visibility,
+                visibility: _collapse,
                 items: _items(context),
               ),
             ),
@@ -354,7 +376,7 @@ class _GalleryShell extends StatelessWidget {
   final ExampleControls Function() readControls;
   final ValueChanged<int> onSelect;
   final ValueChanged<ExampleControls> onApply;
-  final LiquidGlassVisibilityController visibility;
+  final LiquidGlassCollapseController visibility;
   final List<LiquidGlassNavigationItem> items;
 
   @override
@@ -443,8 +465,8 @@ class _GalleryShell extends StatelessWidget {
               motion: controls.motion.value,
               hapticsEnabled: controls.haptics,
               enableDragSelection: controls.dragSelection,
-              enableScrollAutoHide: controls.scrollAutoHide,
-              visibilityController: visibility,
+              enableScrollCollapse: controls.scrollCollapse,
+              collapseController: visibility,
               material: controls.material,
               items: items,
               style: LiquidGlassNavigationStyle(
@@ -476,7 +498,7 @@ class _GalleryShell extends StatelessWidget {
   }
 
   Widget _observed(int page, Widget child) {
-    if (!controls.scrollAutoHide) {
+    if (!controls.scrollCollapse) {
       return child;
     }
     return LiquidGlassScrollObserver(

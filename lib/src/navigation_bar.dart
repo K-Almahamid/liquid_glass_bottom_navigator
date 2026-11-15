@@ -6,15 +6,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter/physics.dart';
 import 'package:flutter/services.dart';
 
+import 'collapse_controller.dart';
+import 'collapse_morph.dart';
 import 'glass_shader.dart';
-import 'hide_slide.dart';
 import 'glass_surface.dart';
 import 'material.dart';
 import 'indicator_geometry.dart';
 import 'item.dart';
 import 'item_view.dart';
 import 'motion.dart';
-import 'visibility_controller.dart';
 import 'navigation_layout.dart';
 import 'options.dart';
 import 'style.dart';
@@ -45,14 +45,15 @@ import 'theme.dart';
 /// bottom view padding to the bar margin. Set it to false when the parent
 /// already positions the bar inside the safe area.
 ///
-/// [enableScrollAutoHide] defaults to false. The bar then stays in place and
-/// ignores [visibilityController]. Turning it on adopts that controller's
-/// current target and slides the whole bar off the bottom of the view when
-/// the target is hidden. The glass, capsule, and labels do not change shape.
+/// [enableScrollCollapse] defaults to false. The bar then stays expanded and
+/// ignores [collapseController]. Turning it on adopts that controller's
+/// current target. A collapsed target morphs the same glass surface into a
+/// compact button for the selected icon. It does not leave the screen.
 ///
-/// A hide request during a destination drag waits until that drag finishes
-/// or is cancelled, then slides from the current offset. Showing the bar
-/// does not call [onIndexChanged].
+/// A collapse request during a destination drag waits until that drag
+/// finishes or is cancelled, then morphs from the current shape. Expanding
+/// the bar does not call [onIndexChanged]. Tapping the compact button expands
+/// it and does not change [currentIndex].
 class LiquidGlassNavigationBar extends StatefulWidget {
   /// Creates a liquid-glass navigation bar.
   const LiquidGlassNavigationBar({
@@ -67,8 +68,8 @@ class LiquidGlassNavigationBar extends StatefulWidget {
     this.hapticsEnabled = true,
     this.haptic = LiquidGlassHaptic.selection,
     this.enableDragSelection = false,
-    this.enableScrollAutoHide = false,
-    this.visibilityController,
+    this.enableScrollCollapse = false,
+    this.collapseController,
     this.material = const LiquidGlassMaterial(),
     this.semanticsLabel,
     super.key,
@@ -124,24 +125,24 @@ class LiquidGlassNavigationBar extends StatefulWidget {
   /// a preview: [currentIndex] remains the parent's value.
   final bool enableDragSelection;
 
-  /// Whether the bar slides off the bottom of the view when asked.
+  /// Whether scrolling may morph the bar into the selected-icon button.
   ///
   /// Defaults to false, which is the resting 1.1.0 bar. When false, a
-  /// [visibilityController] is not listened to and the bar stays visible.
-  /// Scroll-driven hiding needs a controller the page shares with
+  /// [collapseController] is not listened to and the bar stays expanded.
+  /// Scroll-driven collapse needs a controller the page shares with
   /// [LiquidGlassScrollObserver]. The bar does not see a sibling scroll view
   /// on its own.
-  final bool enableScrollAutoHide;
+  final bool enableScrollCollapse;
 
-  /// Target visible or hidden state.
+  /// Target expanded or compact state.
   ///
   /// The caller owns this object. This widget never disposes it. Replace it
   /// in the parent and the bar detaches the previous listener. Dispose the
-  /// old controller after that rebuild. The slide stays on this widget.
+  /// old controller after that rebuild. The morph stays on this widget.
   ///
-  /// Null leaves the bar visible. A hidden target is ignored while
-  /// [enableScrollAutoHide] is false.
-  final LiquidGlassVisibilityController? visibilityController;
+  /// Null leaves the bar expanded. A collapsed target is ignored while
+  /// [enableScrollCollapse] is false.
+  final LiquidGlassCollapseController? collapseController;
 
   /// Glass renderer. [LiquidGlassMaterial.classic] is the 1.1.0 surface.
   ///
@@ -165,11 +166,14 @@ class LiquidGlassNavigationBar extends StatefulWidget {
 class _LiquidGlassNavigationBarState extends State<LiquidGlassNavigationBar>
     with TickerProviderStateMixin {
   late final AnimationController _controller;
+  final GlassFilterControls _filterControls = GlassFilterControls();
   AnimationController? _visibility;
-  LiquidGlassVisibilityController? _listening;
+  LiquidGlassCollapseController? _listening;
   bool _visibilityBound = false;
-  bool _occluded = false;
+  bool _compact = false;
+  double? _morphingToward;
   final GlobalKey _layoutKey = GlobalKey();
+  final GlobalKey _surfaceKey = GlobalKey();
   bool _reduceMotion = false;
   bool _disposed = false;
   TextDirection? _direction;
@@ -254,8 +258,8 @@ class _LiquidGlassNavigationBarState extends State<LiquidGlassNavigationBar>
     super.didUpdateWidget(oldWidget);
     _reduceMotion = _resolveReducedMotion();
     final visibilityChanged =
-        widget.enableScrollAutoHide != oldWidget.enableScrollAutoHide ||
-        !identical(widget.visibilityController, oldWidget.visibilityController);
+        widget.enableScrollCollapse != oldWidget.enableScrollCollapse ||
+        !identical(widget.collapseController, oldWidget.collapseController);
     if (visibilityChanged) {
       _syncVisibilityOwner(jump: false);
     }
@@ -566,21 +570,21 @@ class _LiquidGlassNavigationBarState extends State<LiquidGlassNavigationBar>
   }
 
   double get _visibilityTarget {
-    if (!widget.enableScrollAutoHide || _listening == null) {
+    if (!widget.enableScrollCollapse || _listening == null) {
       return 0;
     }
-    return _listening!.isHidden ? 1 : 0;
+    return _listening!.isCollapsed ? 1 : 0;
   }
 
   void _syncVisibilityOwner({required bool jump}) {
-    if (!widget.enableScrollAutoHide) {
+    if (!widget.enableScrollCollapse) {
       _detachVisibility();
       _jumpVisibility(0);
       return;
     }
     final created = _visibility == null;
     _visibility ??= AnimationController(vsync: this, value: 0);
-    final next = widget.visibilityController;
+    final next = widget.collapseController;
     if (!identical(next, _listening)) {
       _detachVisibility();
       _listening = next;
@@ -588,7 +592,7 @@ class _LiquidGlassNavigationBarState extends State<LiquidGlassNavigationBar>
     }
     if (jump || !_visibilityBound) {
       _jumpVisibility(_visibilityTarget);
-      _occluded = _visibility!.value > 0;
+      _compact = _visibility!.value > 0;
       _visibilityBound = true;
     } else {
       _syncVisibilityMotion();
@@ -612,10 +616,10 @@ class _LiquidGlassNavigationBarState extends State<LiquidGlassNavigationBar>
 
   void _onVisibilityTick() {
     final hidden = (_visibility?.value ?? 0) > 0;
-    if (hidden == _occluded || _disposed || !mounted) {
+    if (hidden == _compact || _disposed || !mounted) {
       return;
     }
-    setState(() => _occluded = hidden);
+    setState(() => _compact = hidden);
   }
 
   void _onVisibilityRequest() {
@@ -638,21 +642,27 @@ class _LiquidGlassNavigationBarState extends State<LiquidGlassNavigationBar>
     if (_dragging) {
       return;
     }
-    if (!widget.enableScrollAutoHide || _visibility == null) {
+    if (!widget.enableScrollCollapse || _visibility == null) {
       _jumpVisibility(0);
       return;
     }
     final target = _visibilityTarget;
     if (_reduceMotion || !widget.motion.enabled) {
+      _morphingToward = target;
       _jumpVisibility(target);
       return;
     }
     final current = _visibility!.value;
     if ((current - target).abs() < 0.001 && !_visibility!.isAnimating) {
+      _morphingToward = target;
       return;
     }
-    final full = target >= current ? 240 : 280;
+    if (_morphingToward == target && _visibility!.isAnimating) {
+      return;
+    }
+    final full = target >= current ? 300 : 340;
     final milliseconds = math.max(1, (full * (target - current).abs()).round());
+    _morphingToward = target;
     _visibility!.stop();
     _visibility!.animateTo(
       target,
@@ -754,6 +764,7 @@ class _LiquidGlassNavigationBarState extends State<LiquidGlassNavigationBar>
             matchLabeledCapsule: matchLabeledCapsule,
             style: style,
             theme: theme,
+            collapse: widget.enableScrollCollapse ? _visibility : null,
           ),
       ],
     );
@@ -788,18 +799,70 @@ class _LiquidGlassNavigationBarState extends State<LiquidGlassNavigationBar>
       );
     }
 
-    final Widget glass =
-        widget.material.mode == LiquidGlassRenderMode.refractive
-        ? RefractiveGlassFilter(
-            material: widget.material,
-            style: style,
-            theme: theme,
-            borderRadius: radius,
-            builder: (BuildContext context, ImageFilter? filter) {
-              return glassFor(filter);
-            },
-          )
-        : glassFor(null);
+    final morphing = widget.enableScrollCollapse && _visibility != null;
+    final highContrast = MediaQuery.highContrastOf(context);
+    Widget morphFor(ImageFilter? filter) {
+      final classic =
+          widget.material.mode == LiquidGlassRenderMode.classic &&
+          filter == null;
+      final fill = classic
+          ? theme.resolvedGlassTint
+          : glassFillTint(
+              widget.material,
+              theme.resolvedGlassTint,
+              shaderActive: filter != null,
+              highContrast: highContrast,
+            );
+      return GestureDetector(
+        behavior: HitTestBehavior.deferToChild,
+        excludeFromSemantics: true,
+        onTap: () {
+          if ((_visibility?.value ?? 0) <= 0) {
+            return;
+          }
+          widget.collapseController?.expand();
+        },
+        child: CollapseMorph(
+          animation: _visibility!,
+          selectedIndex: _effectiveIndex,
+          direction: direction,
+          style: style,
+          theme: theme,
+          material: widget.material,
+          expandedRadius: radius,
+          fill: fill,
+          veil: !classic && filter == null,
+          filter: filter,
+          filterControls: filter == null ? null : _filterControls,
+          child: widthBox,
+        ),
+      );
+    }
+
+    final Widget glass = morphing
+        ? (widget.material.mode == LiquidGlassRenderMode.refractive
+              ? RefractiveGlassFilter(
+                  material: widget.material,
+                  style: style,
+                  theme: theme,
+                  borderRadius: radius,
+                  controls: _filterControls,
+                  builder: (BuildContext context, ImageFilter? filter) {
+                    return morphFor(filter);
+                  },
+                )
+              : morphFor(null))
+        : (widget.material.mode == LiquidGlassRenderMode.refractive
+              ? RefractiveGlassFilter(
+                  material: widget.material,
+                  style: style,
+                  theme: theme,
+                  borderRadius: radius,
+                  builder: (BuildContext context, ImageFilter? filter) {
+                    return glassFor(filter);
+                  },
+                )
+              : glassFor(null));
     final bar = Padding(
       padding: resolvedMargin,
       child: Align(
@@ -808,27 +871,29 @@ class _LiquidGlassNavigationBarState extends State<LiquidGlassNavigationBar>
         child: glass,
       ),
     );
-    final view = View.of(context);
-    final viewportHeight = view.physicalSize.height / view.devicePixelRatio;
-    final extra =
-        style.effectiveShadowBlur + math.max(0, style.effectiveShadowOffset.dy);
-    final slid = widget.enableScrollAutoHide && _visibility != null
-        ? HideSlide(
-            animation: _visibility!,
-            viewportHeight: viewportHeight,
-            extra: extra,
-            child: bar,
-          )
-        : bar;
-    final hidden = _occluded;
+    final surface = KeyedSubtree(key: _surfaceKey, child: bar);
+    if (!_compact) {
+      return Semantics(
+        role: widget.items.isEmpty ? SemanticsRole.none : SemanticsRole.tabBar,
+        label: widget.semanticsLabel,
+        container: true,
+        explicitChildNodes: widget.items.isNotEmpty,
+        child: surface,
+      );
+    }
+    final selected = _effectiveIndex;
+    final selectedName = selected == null
+        ? (widget.semanticsLabel ?? 'Navigation')
+        : liquidGlassItemSemantics(widget.items[selected], selected);
     return Semantics(
-      role: hidden || widget.items.isEmpty
-          ? SemanticsRole.none
-          : SemanticsRole.tabBar,
-      label: hidden ? null : widget.semanticsLabel,
+      button: true,
+      label: selectedName,
+      hint: 'Shows navigation',
+      onTap: widget.collapseController == null
+          ? null
+          : () => widget.collapseController!.expand(),
       container: true,
-      explicitChildNodes: !hidden,
-      child: hidden ? ExcludeSemantics(child: slid) : slid,
+      child: ExcludeSemantics(child: surface),
     );
   }
 
@@ -838,6 +903,7 @@ class _LiquidGlassNavigationBarState extends State<LiquidGlassNavigationBar>
     required bool matchLabeledCapsule,
     required LiquidGlassNavigationStyle style,
     required LiquidGlassNavigationTheme theme,
+    required Animation<double>? collapse,
   }) {
     return LiquidNavigationItemView(
       key: ValueKey<int>(index),
@@ -853,6 +919,7 @@ class _LiquidGlassNavigationBarState extends State<LiquidGlassNavigationBar>
       labelTo: _effectiveIndex,
       style: style,
       theme: theme,
+      collapse: collapse,
       onTap: () => _handleTap(index),
     );
   }

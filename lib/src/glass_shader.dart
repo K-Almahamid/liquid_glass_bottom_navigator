@@ -6,6 +6,36 @@ import 'material.dart';
 import 'style.dart';
 import 'theme.dart';
 
+/// Mutable radii for a live refraction shader.
+///
+/// The navigation morph changes corner radii every paint without rebuilding
+/// the filter. [applyRadius] writes those uniforms on the shader the filter
+/// already holds.
+class GlassFilterControls {
+  ui.FragmentShader? _shader;
+  double _devicePixelRatio = 1;
+
+  /// Records the shader and the pixel ratio used to build [filter].
+  void bind(ui.FragmentShader shader, double devicePixelRatio) {
+    _shader = shader;
+    _devicePixelRatio = devicePixelRatio;
+  }
+
+  /// Writes [radius] in physical pixels. No-op before the shader exists.
+  void applyRadius(BorderRadius radius) {
+    final shader = _shader;
+    if (shader == null) {
+      return;
+    }
+    final dpr = _devicePixelRatio;
+    shader
+      ..setFloat(2, radius.topLeft.x * dpr)
+      ..setFloat(3, radius.topRight.x * dpr)
+      ..setFloat(4, radius.bottomRight.x * dpr)
+      ..setFloat(5, radius.bottomLeft.x * dpr);
+  }
+}
+
 /// Loads the refraction program once and builds a backdrop [ui.ImageFilter].
 ///
 /// The first vec2 and the sampler are filled by the engine. Floats starting
@@ -20,6 +50,7 @@ class RefractiveGlassFilter extends StatefulWidget {
     required this.theme,
     required this.borderRadius,
     required this.builder,
+    this.controls,
     super.key,
   });
 
@@ -37,6 +68,9 @@ class RefractiveGlassFilter extends StatefulWidget {
 
   /// Receives the composed filter, or null while loading or unsupported.
   final Widget Function(BuildContext context, ui.ImageFilter? filter) builder;
+
+  /// Optional live uniform target. The morph updates radii during paint.
+  final GlassFilterControls? controls;
 
   /// Package asset path used by applications that depend on this package.
   static const asset =
@@ -170,6 +204,7 @@ class _RefractiveGlassFilterState extends State<RefractiveGlassFilter> {
           );
     _cacheKey = key;
     _cached = filter;
+    widget.controls?.bind(shader, dpr);
     return filter;
   }
 

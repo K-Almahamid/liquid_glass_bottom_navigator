@@ -178,10 +178,10 @@ class AppearanceSheet extends StatelessWidget {
                           onChanged(controls.copyWith(dragSelection: value)),
                     ),
                     GallerySettingRow(
-                      title: 'Scroll Auto-Hide',
-                      value: controls.scrollAutoHide,
+                      title: 'Scroll collapse',
+                      value: controls.scrollCollapse,
                       onChanged: (value) =>
-                          onChanged(controls.copyWith(scrollAutoHide: value)),
+                          onChanged(controls.copyWith(scrollCollapse: value)),
                     ),
                     GallerySettingRow(
                       title: 'Haptics',

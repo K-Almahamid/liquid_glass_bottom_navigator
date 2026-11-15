@@ -1,0 +1,688 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:liquid_glass_bottom_navigator/src/collapse_morph.dart';
+
+import 'harness.dart';
+
+void main() {
+  test('repeated collapse requests notify once', () {
+    final controller = LiquidGlassCollapseController();
+    var notices = 0;
+    controller.addListener(() => notices++);
+    controller.collapse();
+    controller.collapse();
+    expect(controller.isCollapsed, isTrue);
+    expect(notices, 1);
+    controller.expand();
+    expect(notices, 2);
+    controller.dispose();
+  });
+
+  testWidgets('collapse is off by default and keeps the resting glass', (
+    tester,
+  ) async {
+    await pumpNavigationBar(
+      tester,
+      items: sampleItems(),
+      currentIndex: 0,
+      onIndexChanged: (_) {},
+    );
+    await tester.pumpAndSettle();
+    final bar = tester.widget<LiquidGlassNavigationBar>(
+      find.byType(LiquidGlassNavigationBar),
+    );
+    expect(bar.enableScrollCollapse, isFalse);
+    expect(find.byType(CollapseMorph), findsNothing);
+  });
+
+  testWidgets('a collapsed controller is ignored while the flag is off', (
+    tester,
+  ) async {
+    final controller = LiquidGlassCollapseController(collapsed: true);
+    addTearDown(controller.dispose);
+    await pumpNavigationBar(
+      tester,
+      items: sampleItems(),
+      currentIndex: 0,
+      onIndexChanged: (_) {},
+      collapseController: controller,
+    );
+    await tester.pumpAndSettle();
+    expect(find.byType(CollapseMorph), findsNothing);
+    expect(find.text('Home'), findsOneWidget);
+  });
+
+  testWidgets('collapse keeps the layout and shrinks the glass', (
+    tester,
+  ) async {
+    final controller = LiquidGlassCollapseController();
+    addTearDown(controller.dispose);
+    await pumpNavigationBar(
+      tester,
+      items: sampleItems(),
+      currentIndex: 0,
+      onIndexChanged: (_) {},
+      enableScrollCollapse: true,
+      collapseController: controller,
+      motion: const LiquidGlassMotion.none(),
+    );
+    await tester.pumpAndSettle();
+    final morph = tester.renderObject<RenderCollapseMorph>(
+      find.byType(CollapseMorph),
+    );
+    final expanded = morph.size;
+    expect(morph.debugVisual, Offset.zero & expanded);
+    controller.collapse();
+    await tester.pump();
+    expect(morph.size, expanded);
+    expect(morph.debugVisual.width, lessThan(expanded.width - 40));
+    expect(morph.debugVisual.height, greaterThanOrEqualTo(48));
+    expect(morph.debugVisual.right, closeTo(expanded.width, 0.1));
+    expect(morph.debugVisual.bottom, closeTo(expanded.height, 0.1));
+    final paintedMorph = tester.renderObject<RenderCollapseMorph>(
+      find.byType(CollapseMorph),
+    );
+    final icon = tester.getCenter(find.byIcon(Icons.home_rounded));
+    final origin = tester.getTopLeft(find.byType(CollapseMorph));
+    final painted = icon + paintedMorph.debugShift;
+    final center = origin + paintedMorph.debugVisual.center;
+    expect((painted - center).distance, lessThan(12));
+  });
+
+  testWidgets('a collapse reverses from its current shape', (tester) async {
+    final controller = LiquidGlassCollapseController();
+    addTearDown(controller.dispose);
+    await pumpNavigationBar(
+      tester,
+      items: sampleItems(),
+      currentIndex: 0,
+      onIndexChanged: (_) {},
+      enableScrollCollapse: true,
+      collapseController: controller,
+    );
+    await tester.pumpAndSettle();
+    controller.collapse();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 120));
+    final mid = tester
+        .renderObject<RenderCollapseMorph>(find.byType(CollapseMorph))
+        .debugVisual
+        .width;
+    final full = tester
+        .renderObject<RenderCollapseMorph>(find.byType(CollapseMorph))
+        .size
+        .width;
+    expect(mid, greaterThan(48));
+    expect(mid, lessThan(full - 8));
+    controller.expand();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 80));
+    final back = tester
+        .renderObject<RenderCollapseMorph>(find.byType(CollapseMorph))
+        .debugVisual
+        .width;
+    expect(back, greaterThan(mid));
+    await tester.pumpAndSettle();
+    expect(tester.binding.transientCallbackCount, 0);
+  });
+
+  testWidgets('reduced motion jumps and then stays idle', (tester) async {
+    final controller = LiquidGlassCollapseController();
+    addTearDown(controller.dispose);
+    await pumpNavigationBar(
+      tester,
+      items: sampleItems(),
+      currentIndex: 0,
+      onIndexChanged: (_) {},
+      enableScrollCollapse: true,
+      collapseController: controller,
+      disableAnimations: true,
+    );
+    await tester.pumpAndSettle();
+    controller.collapse();
+    await tester.pump();
+    final morph = tester.renderObject<RenderCollapseMorph>(
+      find.byType(CollapseMorph),
+    );
+    expect(morph.debugVisual.width, lessThan(morph.size.width - 40));
+    expect(tester.binding.transientCallbackCount, 0);
+  });
+
+  testWidgets('scroll down collapses and scroll up expands once', (
+    tester,
+  ) async {
+    final controller = LiquidGlassCollapseController();
+    addTearDown(controller.dispose);
+    var notices = 0;
+    controller.addListener(() => notices++);
+    await _pumpScroll(
+      tester,
+      controller: controller,
+      child: ListView(
+        children: [
+          for (var i = 0; i < 40; i++)
+            SizedBox(height: 48, child: Text('row $i')),
+        ],
+      ),
+    );
+    await tester.pumpAndSettle();
+    final gesture = await tester.startGesture(
+      tester.getCenter(find.byType(ListView)),
+    );
+    await gesture.moveBy(const Offset(0, -20));
+    await tester.pump();
+    expect(controller.isCollapsed, isFalse);
+    await gesture.moveBy(const Offset(0, -40));
+    await tester.pump();
+    expect(controller.isCollapsed, isTrue);
+    expect(notices, 1);
+    await gesture.moveBy(const Offset(0, -30));
+    await tester.pump();
+    expect(notices, 1);
+    await gesture.moveBy(const Offset(0, 16));
+    await tester.pump();
+    expect(controller.isCollapsed, isFalse);
+    expect(notices, 2);
+    await gesture.up();
+  });
+
+  testWidgets('upward scrolling expands with less movement than a collapse', (
+    tester,
+  ) async {
+    final controller = LiquidGlassCollapseController();
+    addTearDown(controller.dispose);
+    await _pumpScroll(
+      tester,
+      controller: controller,
+      child: ListView(
+        children: [
+          for (var i = 0; i < 40; i++) SizedBox(height: 48, child: Text('$i')),
+        ],
+      ),
+    );
+    await tester.pumpAndSettle();
+    final down = await tester.startGesture(
+      tester.getCenter(find.byType(ListView)),
+    );
+    await down.moveBy(const Offset(0, -48));
+    await tester.pump();
+    expect(controller.isCollapsed, isTrue);
+    await down.up();
+    await tester.pump();
+    final up = await tester.startGesture(
+      tester.getCenter(find.byType(ListView)),
+    );
+    await up.moveBy(const Offset(0, 4));
+    await tester.pump();
+    expect(controller.isCollapsed, isTrue);
+    await up.moveBy(const Offset(0, 12));
+    await tester.pump();
+    expect(controller.isCollapsed, isFalse);
+    await up.up();
+  });
+
+  testWidgets('horizontal and nested scrolls do not collapse', (tester) async {
+    final controller = LiquidGlassCollapseController();
+    addTearDown(controller.dispose);
+    await _pumpScroll(
+      tester,
+      controller: controller,
+      child: ListView(
+        children: [
+          SizedBox(
+            height: 80,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              children: [
+                for (var i = 0; i < 8; i++)
+                  const SizedBox(width: 120, child: Text('side')),
+              ],
+            ),
+          ),
+          for (var i = 0; i < 20; i++)
+            SizedBox(height: 40, child: Text('row $i')),
+        ],
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.drag(find.byType(ListView).last, const Offset(-180, 0));
+    await tester.pumpAndSettle();
+    expect(controller.isCollapsed, isFalse);
+  });
+
+  testWidgets('jumpTo does not collapse and the top expands', (tester) async {
+    final controller = LiquidGlassCollapseController();
+    addTearDown(controller.dispose);
+    final scroll = ScrollController();
+    addTearDown(scroll.dispose);
+    await _pumpScroll(
+      tester,
+      controller: controller,
+      child: ListView(
+        controller: scroll,
+        children: [
+          for (var i = 0; i < 40; i++) SizedBox(height: 48, child: Text('$i')),
+        ],
+      ),
+    );
+    await tester.pumpAndSettle();
+    scroll.jumpTo(400);
+    await tester.pumpAndSettle();
+    expect(controller.isCollapsed, isFalse);
+    final gesture = await tester.startGesture(
+      tester.getCenter(find.byType(ListView)),
+    );
+    await gesture.moveBy(const Offset(0, -80));
+    await tester.pump();
+    expect(controller.isCollapsed, isTrue);
+    await gesture.up();
+    await tester.pumpAndSettle();
+    final back = scroll.animateTo(
+      0,
+      duration: const Duration(milliseconds: 200),
+      curve: Curves.linear,
+    );
+    await tester.pumpAndSettle();
+    await back;
+    expect(controller.isCollapsed, isTrue);
+    final parked = scroll.animateTo(
+      24,
+      duration: const Duration(milliseconds: 50),
+      curve: Curves.linear,
+    );
+    await tester.pumpAndSettle();
+    await parked;
+    expect(controller.isCollapsed, isTrue);
+    final home = await tester.startGesture(
+      tester.getCenter(find.byType(ListView)),
+    );
+    await home.moveBy(const Offset(0, 40));
+    await tester.pump();
+    expect(controller.isCollapsed, isFalse);
+    await home.up();
+  });
+
+  testWidgets('only the active page observer drives collapse', (tester) async {
+    final controller = LiquidGlassCollapseController();
+    addTearDown(controller.dispose);
+    var active = 0;
+    final idle = ScrollController();
+    addTearDown(idle.dispose);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: StatefulBuilder(
+            builder: (context, setState) {
+              return Column(
+                children: [
+                  TextButton(
+                    onPressed: () => setState(() => active = 1),
+                    child: const Text('switch'),
+                  ),
+                  Expanded(
+                    child: IndexedStack(
+                      index: active,
+                      children: [
+                        LiquidGlassScrollObserver(
+                          controller: controller,
+                          enabled: active == 0,
+                          child: ListView(
+                            controller: idle,
+                            children: [
+                              for (var i = 0; i < 30; i++)
+                                SizedBox(height: 40, child: Text('idle $i')),
+                            ],
+                          ),
+                        ),
+                        LiquidGlassScrollObserver(
+                          controller: controller,
+                          enabled: active == 1,
+                          child: ListView(
+                            children: [
+                              for (var i = 0; i < 30; i++)
+                                SizedBox(height: 40, child: Text('live $i')),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('switch'));
+    await tester.pumpAndSettle();
+    idle.jumpTo(400);
+    await tester.pumpAndSettle();
+    expect(controller.isCollapsed, isFalse);
+    await tester.drag(find.text('live 4'), const Offset(0, -200));
+    await tester.pumpAndSettle();
+    expect(controller.isCollapsed, isTrue);
+  });
+
+  testWidgets('RTL parks the compact button on the trailing edge', (
+    tester,
+  ) async {
+    final controller = LiquidGlassCollapseController(collapsed: true);
+    addTearDown(controller.dispose);
+    await pumpNavigationBar(
+      tester,
+      items: sampleItems(),
+      currentIndex: 0,
+      onIndexChanged: (_) {},
+      enableScrollCollapse: true,
+      collapseController: controller,
+      motion: const LiquidGlassMotion.none(),
+      textDirection: TextDirection.rtl,
+    );
+    await tester.pumpAndSettle();
+    final morph = tester.renderObject<RenderCollapseMorph>(
+      find.byType(CollapseMorph),
+    );
+    expect(morph.debugVisual.left, closeTo(0, 0.1));
+    expect(morph.debugVisual.width, lessThan(morph.size.width / 2));
+  });
+
+  testWidgets('a compact tap expands and does not change the index', (
+    tester,
+  ) async {
+    final controller = LiquidGlassCollapseController();
+    addTearDown(controller.dispose);
+    final changes = <int>[];
+    await pumpNavigationBar(
+      tester,
+      items: sampleItems(withBadge: true),
+      currentIndex: 1,
+      onIndexChanged: changes.add,
+      enableScrollCollapse: true,
+      collapseController: controller,
+      motion: const LiquidGlassMotion.none(),
+    );
+    await tester.pumpAndSettle();
+    controller.collapse();
+    await tester.pump();
+    final morph = tester.renderObject<RenderCollapseMorph>(
+      find.byType(CollapseMorph),
+    );
+    await tester.tapAt(
+      tester.getTopLeft(find.byType(CollapseMorph)) + morph.debugVisual.center,
+    );
+    await tester.pump();
+    expect(changes, isEmpty);
+    expect(controller.isCollapsed, isFalse);
+    await tester.pumpAndSettle();
+    expect(find.text('Search'), findsWidgets);
+  });
+
+  testWidgets('changing label mode does not break semantics', (tester) async {
+    final handle = tester.ensureSemantics();
+    final controller = LiquidGlassCollapseController();
+    addTearDown(controller.dispose);
+    Future<void> show(LiquidGlassLabelMode mode) {
+      return pumpNavigationBar(
+        tester,
+        items: sampleItems(),
+        currentIndex: 0,
+        onIndexChanged: (_) {},
+        enableScrollCollapse: true,
+        collapseController: controller,
+        labelMode: mode,
+      );
+    }
+
+    await show(LiquidGlassLabelMode.hidden);
+    await tester.pumpAndSettle();
+    await show(LiquidGlassLabelMode.selected);
+    await tester.pumpAndSettle();
+    await show(LiquidGlassLabelMode.always);
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    handle.dispose();
+  });
+
+  testWidgets('a compact bar leaves destinations out of semantics', (
+    tester,
+  ) async {
+    final controller = LiquidGlassCollapseController(collapsed: true);
+    addTearDown(controller.dispose);
+    final handle = tester.ensureSemantics();
+    await pumpNavigationBar(
+      tester,
+      items: sampleItems(),
+      currentIndex: 0,
+      onIndexChanged: (_) {},
+      enableScrollCollapse: true,
+      collapseController: controller,
+      motion: const LiquidGlassMotion.none(),
+    );
+    await tester.pumpAndSettle();
+    final root =
+        tester.binding.pipelineOwner.semanticsOwner!.rootSemanticsNode!;
+    expect(_hasLabel(root, 'Search'), isFalse);
+    expect(_hasLabel(root, 'Inbox'), isFalse);
+    expect(_hasHint(root, 'Shows navigation'), isTrue);
+    handle.dispose();
+  });
+
+  testWidgets('a leading tap misses the compact button', (tester) async {
+    final controller = LiquidGlassCollapseController(collapsed: true);
+    addTearDown(controller.dispose);
+    final changes = <int>[];
+    await pumpNavigationBar(
+      tester,
+      items: sampleItems(),
+      currentIndex: 0,
+      onIndexChanged: changes.add,
+      enableScrollCollapse: true,
+      collapseController: controller,
+      motion: const LiquidGlassMotion.none(),
+    );
+    await tester.pumpAndSettle();
+    final box = tester.getRect(find.byType(CollapseMorph));
+    await tester.tapAt(box.centerLeft + const Offset(12, 0));
+    await tester.pump();
+    expect(controller.isCollapsed, isTrue);
+    expect(changes, isEmpty);
+  });
+
+  testWidgets('a collapse during a drag waits until the drag ends', (
+    tester,
+  ) async {
+    final controller = LiquidGlassCollapseController();
+    addTearDown(controller.dispose);
+    await pumpNavigationBar(
+      tester,
+      items: sampleItems(),
+      currentIndex: 0,
+      onIndexChanged: (_) {},
+      enableScrollCollapse: true,
+      enableDragSelection: true,
+      collapseController: controller,
+    );
+    await tester.pumpAndSettle();
+    final gesture = await tester.startGesture(
+      tester.getCenter(find.byIcon(Icons.home_rounded)),
+    );
+    await gesture.moveBy(const Offset(48, 0));
+    await tester.pump();
+    controller.collapse();
+    await tester.pump(const Duration(milliseconds: 40));
+    final morph = tester.renderObject<RenderCollapseMorph>(
+      find.byType(CollapseMorph),
+    );
+    expect(morph.debugVisual.width, closeTo(morph.size.width, 1));
+    await gesture.up();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 40));
+    expect(
+      tester
+          .renderObject<RenderCollapseMorph>(find.byType(CollapseMorph))
+          .debugVisual
+          .width,
+      lessThan(morph.size.width),
+    );
+  });
+
+  testWidgets('the bar does not dispose a caller-owned controller', (
+    tester,
+  ) async {
+    final controller = LiquidGlassCollapseController();
+    await pumpNavigationBar(
+      tester,
+      items: sampleItems(),
+      currentIndex: 0,
+      onIndexChanged: (_) {},
+      enableScrollCollapse: true,
+      collapseController: controller,
+    );
+    await tester.pumpAndSettle();
+    await tester.pumpWidget(const SizedBox.shrink());
+    controller.collapse();
+    expect(controller.isCollapsed, isTrue);
+    controller.dispose();
+  });
+
+  testWidgets('replacing the controller detaches the previous one', (
+    tester,
+  ) async {
+    final first = LiquidGlassCollapseController();
+    final second = LiquidGlassCollapseController();
+    addTearDown(first.dispose);
+    addTearDown(second.dispose);
+    await pumpNavigationBar(
+      tester,
+      items: sampleItems(),
+      currentIndex: 0,
+      onIndexChanged: (_) {},
+      enableScrollCollapse: true,
+      collapseController: first,
+      motion: const LiquidGlassMotion.none(),
+    );
+    await tester.pumpAndSettle();
+    await pumpNavigationBar(
+      tester,
+      items: sampleItems(),
+      currentIndex: 0,
+      onIndexChanged: (_) {},
+      enableScrollCollapse: true,
+      collapseController: second,
+      motion: const LiquidGlassMotion.none(),
+    );
+    await tester.pump();
+    first.collapse();
+    await tester.pump();
+    final morph = tester.renderObject<RenderCollapseMorph>(
+      find.byType(CollapseMorph),
+    );
+    expect(morph.debugVisual.width, closeTo(morph.size.width, 1));
+    second.collapse();
+    await tester.pump();
+    expect(morph.debugVisual.width, lessThan(morph.size.width / 2));
+  });
+
+  testWidgets('a disabled observer does not change collapse', (tester) async {
+    final controller = LiquidGlassCollapseController();
+    addTearDown(controller.dispose);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: LiquidGlassScrollObserver(
+            controller: controller,
+            enabled: false,
+            child: ListView(
+              children: [
+                for (var i = 0; i < 30; i++)
+                  SizedBox(height: 40, child: Text('row $i')),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.drag(find.byType(ListView), const Offset(0, -160));
+    await tester.pumpAndSettle();
+    expect(controller.isCollapsed, isFalse);
+  });
+
+  testWidgets('disposing during a collapse leaves no ticker', (tester) async {
+    final controller = LiquidGlassCollapseController();
+    addTearDown(controller.dispose);
+    await pumpNavigationBar(
+      tester,
+      items: sampleItems(),
+      currentIndex: 0,
+      onIndexChanged: (_) {},
+      enableScrollCollapse: true,
+      collapseController: controller,
+    );
+    await tester.pumpAndSettle();
+    controller.collapse();
+    await tester.pump();
+    await tester.pumpWidget(const SizedBox.shrink());
+    expect(tester.takeException(), isNull);
+    expect(tester.binding.transientCallbackCount, 0);
+  });
+}
+
+bool _hasLabel(SemanticsNode node, String label) {
+  if (node.label == label) {
+    return true;
+  }
+  var found = false;
+  node.visitChildren((SemanticsNode child) {
+    found = found || _hasLabel(child, label);
+    return true;
+  });
+  return found;
+}
+
+bool _hasHint(SemanticsNode node, String hint) {
+  if (node.hint == hint) {
+    return true;
+  }
+  var found = false;
+  node.visitChildren((SemanticsNode child) {
+    found = found || _hasHint(child, hint);
+    return true;
+  });
+  return found;
+}
+
+Future<void> _pumpScroll(
+  WidgetTester tester, {
+  required LiquidGlassCollapseController controller,
+  required Widget child,
+}) {
+  return tester.pumpWidget(
+    MaterialApp(
+      home: Scaffold(
+        body: Column(
+          children: [
+            Expanded(
+              child: LiquidGlassScrollObserver(
+                controller: controller,
+                child: child,
+              ),
+            ),
+            LiquidGlassNavigationBar(
+              enableScrollCollapse: true,
+              collapseController: controller,
+              currentIndex: 0,
+              onIndexChanged: (_) {},
+              motion: const LiquidGlassMotion.none(),
+              style: testStyle,
+              items: sampleItems(),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}

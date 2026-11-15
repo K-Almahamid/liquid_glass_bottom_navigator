@@ -4,11 +4,11 @@
 * `enhanced` keeps that blur and adds a theme-driven veil and capsule highlight. It does not sample backdrop pixels.
 * `refractive` displaces the backdrop near the glass edge on Impeller, through one composed blur and `ImageFilter.shader`. Other backends, a failed shader load, and the load itself paint `enhanced` instead. Icons and labels stay on the theme. High contrast makes the enhanced and refractive fills more opaque.
 * `regular` and `clear` change how much of the backdrop the fill keeps. Clear is the lighter of the two.
-* Adds optional scroll auto-hide. `enableScrollAutoHide` defaults to false, so 1.1.0 bars stay on screen.
-* `LiquidGlassVisibilityController` holds the visible or hidden target. `hide`, `show`, and `toggle` do not notify when the target is already current. The bar owns the slide. It does not dispose a controller the caller passed in.
-* `LiquidGlassScrollObserver` hides after about 40 logical pixels of downward user scrolling and shows after about 12 of upward scrolling. A user scroll at the top shows the bar. The observer ignores horizontal lists, nested scrollables at depth greater than 0, and programmatic `jumpTo` or `animateTo`. `enabled` false keeps the child mounted and ignores it. The observer does not consume scroll notifications.
-* The whole bar translates below the view. It does not change glass size, capsule geometry, or the selected index. A hide requested during a destination drag waits until the drag ends. A moving or hidden bar does not take hits and leaves the semantics tree. Reduced motion jumps to the target offset.
-* While `enableScrollAutoHide` is false, a controller whose target is hidden is ignored and the bar stays visible.
+* Adds optional scroll collapse. `enableScrollCollapse` defaults to false, so 1.1.0 bars stay expanded.
+* `LiquidGlassCollapseController` holds the expanded or compact target. `collapse`, `expand`, and `toggle` do not notify when the target is already current. The bar owns the morph. It does not dispose a controller the caller passed in.
+* `LiquidGlassScrollObserver` collapses after about 32 logical pixels of downward user scrolling and expands after about 8 of upward scrolling. A user scroll at the top expands the bar. The observer ignores horizontal lists, nested scrollables at depth greater than 0, and programmatic `jumpTo` or `animateTo`. `enabled` false keeps the child mounted and ignores it. The observer does not consume scroll notifications.
+* The same glass surface contracts to a trailing compact button for the selected icon. It does not leave the screen or change `currentIndex`. A collapse requested during a destination drag waits until the drag ends. While the shape is moving or compact, hits follow the visible glass and hidden destinations leave the semantics tree. Tapping the compact button expands the bar without a selection callback. Reduced motion jumps to the target shape. Classic, enhanced, and refractive materials share that morph.
+* While `enableScrollCollapse` is false, a controller whose target is collapsed is ignored and the bar stays expanded.
 
 ## 1.1.0
 

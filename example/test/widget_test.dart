@@ -53,7 +53,7 @@ void main() {
       expect(home.position.pixels, greaterThan(40));
       expect(tester.getTopLeft(bar), before);
       expect(_bar(tester).currentIndex, 0);
-      expect(_bar(tester).enableScrollAutoHide, isTrue);
+      expect(_bar(tester).enableScrollCollapse, isTrue);
 
       final reveal = await tester.startGesture(
         tester.getCenter(find.byKey(const ValueKey('home-scroll'))),

@@ -506,6 +506,25 @@ const _places = <_Entry>[
     Icons.storefront_outlined,
   ),
   _Entry('Train east', 'A seat by the window', Icons.train_outlined),
+  _Entry('River path', 'The walk after the rain', Icons.water_outlined),
+  _Entry(
+    'Reading room',
+    'Quiet once the doors close',
+    Icons.local_library_outlined,
+  ),
+  _Entry(
+    'Night market',
+    'Stalls along the side lane',
+    Icons.nightlife_outlined,
+  ),
+  _Entry('Hill overlook', 'The city lights below', Icons.landscape_outlined),
+  _Entry(
+    'Corner bakery',
+    'Bread still warm at dusk',
+    Icons.bakery_dining_outlined,
+  ),
+  _Entry('Ferry landing', 'The last boat across', Icons.sailing_outlined),
+  _Entry('Old greenhouse', 'Glass and warm air', Icons.yard_outlined),
 ];
 
 const _notes = <_Entry>[
@@ -515,6 +534,21 @@ const _notes = <_Entry>[
     Icons.menu_book_outlined,
   ),
   _Entry('Winter soup', 'Saved for a cold evening', Icons.restaurant_outlined),
+  _Entry(
+    'Morning list',
+    'Milk, stamps, and the blue pen',
+    Icons.checklist_outlined,
+  ),
+  _Entry('Window sketch', 'The courtyard from the desk', Icons.draw_outlined),
+  _Entry('Late train', 'Written on the ride home', Icons.edit_note_outlined),
+  _Entry('Herb garden', 'What to plant before the frost', Icons.spa_outlined),
+  _Entry(
+    'Sunday walk',
+    'The long way past the station',
+    Icons.directions_walk_outlined,
+  ),
+  _Entry('Shelf labels', 'Books to take back this week', Icons.bookmark_border),
+  _Entry('Kitchen light', 'When the room goes gold', Icons.light_outlined),
 ];
 
 const _saved = <_Entry>[

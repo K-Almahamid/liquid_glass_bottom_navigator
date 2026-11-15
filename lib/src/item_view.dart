@@ -28,6 +28,7 @@ class LiquidNavigationItemView extends StatelessWidget {
     required this.theme,
     required this.onTap,
     this.labelOpacity = 1,
+    this.collapse,
     super.key,
   });
 
@@ -79,6 +80,12 @@ class LiquidNavigationItemView extends StatelessWidget {
   /// fade it without changing the label's layout size.
   final double labelOpacity;
 
+  /// Collapse morph. Null leaves every destination fully visible.
+  ///
+  /// Unselected destinations fade out. The selected icon stays opaque and
+  /// its label fades, so the compact button shows the icon only.
+  final Animation<double>? collapse;
+
   @override
   Widget build(BuildContext context) {
     final label = item.label?.trim();
@@ -99,21 +106,39 @@ class LiquidNavigationItemView extends StatelessWidget {
       hint: '${index + 1} of $count',
       onTap: onTap,
       excludeSemantics: true,
-      child: _ItemControl(
-        onTap: onTap,
-        ringColor: foreground,
-        radius: style.indicatorRadius.resolve(Directionality.of(context)),
-        child: ConstrainedBox(
-          constraints: BoxConstraints(minHeight: style.minTouchTarget),
-          child: _body(
-            context,
-            foreground: foreground,
-            label: label,
-            showLabelText: showLabelText,
+      child: _fadeItem(
+        _ItemControl(
+          onTap: onTap,
+          ringColor: foreground,
+          radius: style.indicatorRadius.resolve(Directionality.of(context)),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: style.minTouchTarget),
+            child: _body(
+              context,
+              foreground: foreground,
+              label: label,
+              showLabelText: showLabelText,
+            ),
           ),
         ),
       ),
     );
+  }
+
+  Widget _fadeItem(Widget child) {
+    final collapse = this.collapse;
+    if (collapse == null || selected) {
+      return child;
+    }
+    return _CollapseFade(animation: collapse, child: child);
+  }
+
+  Widget _fadeLabel(Widget child) {
+    final collapse = this.collapse;
+    if (collapse == null || !selected) {
+      return child;
+    }
+    return _CollapseFade(animation: collapse, child: child);
   }
 
   Widget _body(
@@ -189,14 +214,16 @@ class LiquidNavigationItemView extends StatelessWidget {
                   child:
                       label == null || labelMode == LiquidGlassLabelMode.hidden
                       ? null
-                      : Opacity(
-                          opacity: showLabelText ? labelOpacity : 0,
-                          child: Text(
-                            label,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            textAlign: TextAlign.center,
-                            style: _labelStyle(foreground),
+                      : _fadeLabel(
+                          Opacity(
+                            opacity: showLabelText ? labelOpacity : 0,
+                            child: Text(
+                              label,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.center,
+                              style: _labelStyle(foreground),
+                            ),
                           ),
                         ),
                 ),
@@ -214,24 +241,26 @@ class LiquidNavigationItemView extends StatelessWidget {
                       SizedBox(height: style.labelSpacing),
                       SizedBox(
                         height: labelHeight,
-                        child: labelOpacity < 1
-                            ? Opacity(
-                                opacity: labelOpacity,
-                                child: Text(
+                        child: _fadeLabel(
+                          labelOpacity < 1
+                              ? Opacity(
+                                  opacity: labelOpacity,
+                                  child: Text(
+                                    label,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    textAlign: TextAlign.center,
+                                    style: _labelStyle(foreground),
+                                  ),
+                                )
+                              : Text(
                                   label,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   textAlign: TextAlign.center,
                                   style: _labelStyle(foreground),
                                 ),
-                              )
-                            : Text(
-                                label,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                textAlign: TextAlign.center,
-                                style: _labelStyle(foreground),
-                              ),
+                        ),
                       ),
                     ],
                   ),
@@ -1338,6 +1367,29 @@ class _BadgeView extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Fades a destination or its label during the first part of a collapse.
+///
+/// Opacity reaches zero before the glass is small, so a label does not sit
+/// on the selected icon. The child is not rebuilt on each tick.
+class _CollapseFade extends StatelessWidget {
+  const _CollapseFade({required this.animation, required this.child});
+
+  final Animation<double> animation;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: animation,
+      child: child,
+      builder: (BuildContext context, Widget? child) {
+        final t = (animation.value / 0.45).clamp(0.0, 1.0);
+        return Opacity(opacity: 1 - t, child: child);
+      },
     );
   }
 }
