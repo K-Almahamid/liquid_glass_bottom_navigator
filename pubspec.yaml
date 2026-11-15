@@ -24,10 +24,10 @@ dev_dependencies:
   flutter_lints: ^6.0.0
 
 screenshots:
-  - description: Light glass bar over colored page content, with Inbox selected.
-    path: screenshots/light.png
-  - description: Dark glass bar over the same page content, with Inbox selected.
-    path: screenshots/dark.png
+  - description: Light refractive glass over the inbox, with Inbox selected.
+    path: screenshots/light-expanded.png
+  - description: Dark refractive glass over the same inbox, with Inbox selected.
+    path: screenshots/dark-expanded.png
 
 flutter:
   shaders:

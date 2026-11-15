@@ -40,6 +40,9 @@ class _LiquidGlassExampleAppState extends State<LiquidGlassExampleApp> {
 
   static const _capture = bool.fromEnvironment('CAPTURE');
   static const _captureAutoHide = bool.fromEnvironment('CAPTURE_AUTOHIDE');
+  static const _releaseCapture = bool.fromEnvironment('RELEASE_CAPTURE');
+  static const _releaseGif = bool.fromEnvironment('RELEASE_GIF');
+  static const _releaseGlass = bool.fromEnvironment('RELEASE_GLASS');
   static const _glassCapture = String.fromEnvironment('GLASS_CAPTURE');
 
   int _index = 0;
@@ -83,7 +86,195 @@ class _LiquidGlassExampleAppState extends State<LiquidGlassExampleApp> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _captureTour();
       });
+    } else if (_releaseCapture) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _releaseTour();
+      });
+    } else if (_releaseGif) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _releaseGifTour();
+      });
+    } else if (_releaseGlass) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _releaseGlassTour();
+      });
     }
+  }
+
+  Future<void> _releaseGlassTour() async {
+    const page = ExampleControls(
+      themeMode: ThemeMode.light,
+      dragSelection: false,
+    );
+    Future<void> still(String name, ExampleControls controls) async {
+      setState(() {
+        _controls = controls;
+        _index = 0;
+      });
+      _collapse.expand();
+      await Future<void>.delayed(const Duration(milliseconds: 1100));
+      debugPrint('CAPTURE $name');
+      await Future<void>.delayed(const Duration(milliseconds: 1800));
+    }
+
+    await still(
+      'refractive-regular',
+      page.copyWith(backdrop: GalleryBackdrop.pattern),
+    );
+    await still(
+      'refractive-clear',
+      page.copyWith(
+        backdrop: GalleryBackdrop.pattern,
+        glassVariant: LiquidGlassMaterialVariant.clear,
+      ),
+    );
+    debugPrint('CAPTURE glass-done');
+  }
+
+  /// Marketing stills and the scroll-morph recording.
+  ///
+  /// Used only with `--dart-define=RELEASE_CAPTURE=true`. The stills settle
+  /// before each `CAPTURE` line. The GIF segment drags the home list through
+  /// the scroll observer, then changes `currentIndex` from the parent.
+  Future<void> _releaseTour() async {
+    const page = ExampleControls(
+      themeMode: ThemeMode.light,
+      dragSelection: false,
+    );
+    Future<void> still(
+      String name,
+      ExampleControls controls,
+      int index, {
+      bool collapsed = false,
+    }) async {
+      setState(() {
+        _controls = controls;
+        _index = index;
+      });
+      if (collapsed) {
+        _collapse.collapse();
+      } else {
+        _collapse.expand();
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 1100));
+      debugPrint('CAPTURE $name');
+      await Future<void>.delayed(const Duration(milliseconds: 1800));
+    }
+
+    await still('light-expanded', page, 2);
+    await still('dark-expanded', page.copyWith(themeMode: ThemeMode.dark), 2);
+    await still(
+      'refractive-regular',
+      page.copyWith(backdrop: GalleryBackdrop.pattern),
+      0,
+    );
+    await still(
+      'refractive-clear',
+      page.copyWith(
+        backdrop: GalleryBackdrop.pattern,
+        glassVariant: LiquidGlassMaterialVariant.clear,
+      ),
+      0,
+    );
+    await still(
+      'icons-only',
+      page.copyWith(labelMode: LiquidGlassLabelMode.hidden),
+      0,
+    );
+    await still(
+      'selected-only',
+      page.copyWith(labelMode: LiquidGlassLabelMode.selected),
+      2,
+    );
+    await still('compact-control', page, 0, collapsed: true);
+    await still('rtl', page.copyWith(rtl: true), 0);
+
+    await _releaseGifTour();
+  }
+
+  Future<void> _releaseGifTour() async {
+    const page = ExampleControls(
+      themeMode: ThemeMode.light,
+      dragSelection: false,
+    );
+    setState(() {
+      _controls = page;
+      _index = 0;
+    });
+    _collapse.expand();
+    await Future<void>.delayed(const Duration(milliseconds: 700));
+    debugPrint('CAPTURE gif-start');
+    await Future<void>.delayed(const Duration(milliseconds: 700));
+    await _fingerDrag(-140);
+    await Future<void>.delayed(const Duration(milliseconds: 1200));
+    await _fingerDrag(160);
+    await Future<void>.delayed(const Duration(milliseconds: 1200));
+    setState(() => _index = 2);
+    await Future<void>.delayed(const Duration(milliseconds: 1000));
+    debugPrint('CAPTURE gif-end');
+    debugPrint(
+      'RELEASE collapsed=${_collapse.isCollapsed} '
+      'pixels=${_homeScroll()?.pixels.toStringAsFixed(1)}',
+    );
+  }
+
+  ScrollPosition? _homeScroll() {
+    ScrollPosition? found;
+    void walk(Element element) {
+      if (element is StatefulElement && element.state is ScrollableState) {
+        final position = (element.state as ScrollableState).position;
+        if (position.axis == Axis.vertical &&
+            position.hasContentDimensions &&
+            position.maxScrollExtent > 40 &&
+            (found == null ||
+                position.maxScrollExtent > found!.maxScrollExtent)) {
+          found = position;
+        }
+      }
+      element.visitChildren(walk);
+    }
+
+    walk(context as Element);
+    return found;
+  }
+
+  /// A real drag, so the scroll observer treats it as a finger.
+  Future<void> _fingerDrag(double pixels) async {
+    final position = _homeScroll();
+    if (position == null) {
+      debugPrint('RELEASE no-scroll');
+      return;
+    }
+    final drag = position.drag(
+      DragStartDetails(globalPosition: const Offset(220, 500)),
+      () {},
+    );
+    const step = 24.0;
+    var moved = 0.0;
+    while (moved.abs() < pixels.abs()) {
+      final delta = pixels.sign * step;
+      moved += delta;
+      drag.update(
+        DragUpdateDetails(
+          sourceTimeStamp: Duration(milliseconds: moved.abs().round()),
+          globalPosition: Offset(220, 500 + moved),
+          delta: Offset(0, delta),
+          primaryDelta: delta,
+        ),
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 40));
+    }
+    final velocity = pixels.sign * 120.0;
+    drag.end(
+      DragEndDetails(
+        velocity: Velocity(pixelsPerSecond: Offset(0, velocity)),
+        primaryVelocity: velocity,
+      ),
+    );
+    debugPrint(
+      'RELEASE drag pixels=${position.pixels.toStringAsFixed(1)} '
+      'collapsed=${_collapse.isCollapsed}',
+    );
   }
 
   /// Settled stills, then a short programmatic morph. Used only with
@@ -843,7 +1034,12 @@ class _PatternPainter extends CustomPainter {
       ),
       textDirection: TextDirection.ltr,
     )..layout();
-    text.paint(canvas, Offset(24, size.height - 120));
+    // The band painted behind the bar is short. The caption stays on the
+    // full-page pattern so it does not sit inside the glass.
+    if (size.height < 220) {
+      return;
+    }
+    text.paint(canvas, Offset(24, size.height * 0.42));
   }
 
   @override

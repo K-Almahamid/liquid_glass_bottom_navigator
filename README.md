@@ -4,21 +4,35 @@ A floating, rounded, translucent bottom navigation bar for Flutter. The selected
 
 The bar is controlled by your widget. It does not own a navigation stack, a router, or an application state object.
 
-**Status:** the navigation bar, glass surface, motion, badges, haptics, themes, and accessibility behavior in this README are implemented. This package does not simulate optical glass refraction.
+**Status:** classic glass is the default and keeps the 1.1.0 backdrop blur. Refractive glass is opt-in. It samples the clipped backdrop and is an approximation, not Apple's Liquid Glass. A renderer that cannot build the shader paints enhanced glass instead.
+
+## Features
+
+- Classic, enhanced, and refractive glass, with regular and clear fills
+- Spring-driven selection capsule, including a morphing style
+- Drag to select, badges, light and dark themes, and all three label modes
+- Optional scroll collapse: scrolling down contracts the bar to the selected icon, and scrolling up expands it
+- RTL, safe area, keyboard focus, and reduced motion
 
 ## Preview
 
-These frames are from the example on an iPhone 18 Pro Max simulator, iOS 27, after the indicator has settled. The page content sits behind one backdrop blur. The GIF is a screen recording of programmatic selection with the morphing capsule. It is not a finger drag.
+These frames are from the example on an iPhone 18 Pro Max simulator, iOS 27. The example is on refractive glass. The package default is still classic.
 
-![Morphing capsule moving between Home, Inbox, and Profile](screenshots/liquid_animation.gif)
+The GIF is a simulator recording. A scripted drag on the example's home list scrolls down, the bar contracts to the selected icon, then the same drag scrolls up and the bar expands. The parent then changes `currentIndex` from Home to Inbox, and the capsule moves. It is not a recording of a finger on the glass.
 
-<img src="screenshots/light.png" alt="Light theme, all labels, Inbox selected" width="240">
-<img src="screenshots/dark.png" alt="Dark theme, all labels, Inbox selected" width="240">
+![Scroll down contracts the bar, scroll up expands it, then the capsule moves to Inbox](screenshots/scroll-morph.gif)
 
-<img src="screenshots/icons_only.png" alt="Light theme, icons only, Home selected" width="240">
-<img src="screenshots/selected_only.png" alt="Light theme, selected label only, Inbox selected" width="240">
+<img src="screenshots/light-expanded.png" alt="Light theme, refractive glass, all labels, Inbox selected" width="240">
+<img src="screenshots/dark-expanded.png" alt="Dark theme, refractive glass, all labels, Inbox selected" width="240">
 
-<img src="screenshots/bar.png" alt="Close-up of the light glass bar with Inbox selected" width="480">
+<img src="screenshots/refractive-regular.png" alt="Regular refractive glass over a grid, Home selected" width="240">
+<img src="screenshots/refractive-clear.png" alt="Clear refractive glass over the same grid, Home selected" width="240">
+
+<img src="screenshots/icons-only.png" alt="Icons only, Home selected" width="240">
+<img src="screenshots/selected-only.png" alt="Selected label only, Inbox selected" width="240">
+
+<img src="screenshots/compact-control.png" alt="Compact selected-icon button after collapse" width="240">
+<img src="screenshots/rtl.png" alt="Right-to-left layout, Home selected on the trailing side" width="240">
 
 ## Install
 
@@ -191,7 +205,7 @@ There is no separate item border radius. The bar radius and the indicator radius
 
 `LiquidGlassNavigationTheme` holds the colors. `LiquidGlassNavigationTheme.adaptive()` keeps a neutral glass tint and takes the accent, indicator, and unselected foreground from `ThemeData.brightness` and `ColorScheme`. `LiquidGlassNavigationTheme.light` and `.dark` stay fixed. Pass any explicit theme to ignore the ambient colors. A style color set by the caller is applied after that resolution and is not replaced by the adaptive theme.
 
-The glass is one clipped `BackdropFilter`, a neutral tint, and a soft rim that is lighter along the top edge. The default elevation is 0, so there is no drop shadow unless you set one. There is no second blur and no refraction shader. `BackdropFilter` softens the pixels behind the bar. It does not bend them. Set `blurSigma` to `0` for a flat tint when blur is too costly or unavailable. Web and older GPUs vary in how well `BackdropFilter` performs. Impeller can blur, and it is still not free.
+Classic glass is one clipped `BackdropFilter`, a neutral tint, and a soft rim that is lighter along the top edge. The default elevation is 0, so there is no drop shadow unless you set one. Classic does not bend the backdrop. Set `blurSigma` to `0` for a flat tint when blur is too costly or unavailable. Web and older GPUs vary in how well `BackdropFilter` performs. Impeller can blur, and it is still not free. Refractive mode, described above, is the only mode that displaces a sample, and only inside the clip.
 
 ## Motion
 
@@ -261,6 +275,6 @@ Replace `macos` with the physical iPhone device id for that follow-up. See `exam
 
 ## Versioning
 
-Version `1.2.0` adds optional scroll collapse and stays compatible with `1.1.0` when `enableScrollCollapse` is left false. The license is BSD 3-Clause. See [LICENSE](LICENSE). Issues: https://github.com/K-Almahamid/liquid_glass_bottom_navigator/issues.
+Version `1.2.0` adds optional scroll collapse and opt-in refractive glass. Leave `enableScrollCollapse` false and keep the default material to stay on the 1.1.0 surface. The license is BSD 3-Clause. See [LICENSE](LICENSE). Issues: https://github.com/K-Almahamid/liquid_glass_bottom_navigator/issues.
 
 Source: https://github.com/K-Almahamid/liquid_glass_bottom_navigator

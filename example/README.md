@@ -27,4 +27,4 @@ flutter run --profile -d macos -t lib/profile_main.dart
 
 The app prints one `PROFILE_RESULT` JSON object and exits. The run includes an idle window, a scrolling list with and without the bar, morphing and sliding capsules at blur sigma 18, and 80 mount and unmount cycles that report resident memory. The iOS simulator cannot build profile mode. A physical device can be substituted for `macos` only when you intend to install the example on it.
 
-Still screenshots of the gallery can be captured with `--dart-define=CAPTURE=true`. A normal `flutter run` does not start that tour.
+Still screenshots of the gallery can be captured with `--dart-define=CAPTURE=true`. `--dart-define=RELEASE_CAPTURE=true` captures the marketing set used for 1.2.0. The GIF in that set is a scripted drag on the home list, not a finger on the glass. A normal `flutter run` does not start either tour.
