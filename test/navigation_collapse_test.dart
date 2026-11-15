@@ -85,9 +85,10 @@ void main() {
     );
     final icon = tester.getCenter(find.byIcon(Icons.home_rounded));
     final origin = tester.getTopLeft(find.byType(CollapseMorph));
-    final painted = icon + paintedMorph.debugShift;
     final center = origin + paintedMorph.debugVisual.center;
-    expect((painted - center).distance, lessThan(12));
+    expect((icon - center).distance, lessThan(12));
+    expect(paintedMorph.debugShift.distance, greaterThan(20));
+    expect(paintedMorph.debugProgress, 1);
   });
 
   testWidgets('a collapse reverses from its current shape', (tester) async {
@@ -170,10 +171,10 @@ void main() {
     final gesture = await tester.startGesture(
       tester.getCenter(find.byType(ListView)),
     );
-    await gesture.moveBy(const Offset(0, -20));
+    await gesture.moveBy(const Offset(0, -8));
     await tester.pump();
     expect(controller.isCollapsed, isFalse);
-    await gesture.moveBy(const Offset(0, -40));
+    await gesture.moveBy(const Offset(0, -16));
     await tester.pump();
     expect(controller.isCollapsed, isTrue);
     expect(notices, 1);
@@ -213,10 +214,10 @@ void main() {
     final up = await tester.startGesture(
       tester.getCenter(find.byType(ListView)),
     );
-    await up.moveBy(const Offset(0, 4));
+    await up.moveBy(const Offset(0, 2));
     await tester.pump();
     expect(controller.isCollapsed, isTrue);
-    await up.moveBy(const Offset(0, 12));
+    await up.moveBy(const Offset(0, 8));
     await tester.pump();
     expect(controller.isCollapsed, isFalse);
     await up.up();
@@ -629,6 +630,342 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(tester.binding.transientCallbackCount, 0);
   });
+
+  testWidgets('a reversal in the same drag expands without a new start', (
+    tester,
+  ) async {
+    final controller = LiquidGlassCollapseController();
+    addTearDown(controller.dispose);
+    var notices = 0;
+    controller.addListener(() => notices++);
+    await _pumpScroll(
+      tester,
+      controller: controller,
+      child: ListView(
+        children: [
+          for (var i = 0; i < 40; i++) SizedBox(height: 48, child: Text('$i')),
+        ],
+      ),
+    );
+    await tester.pumpAndSettle();
+    final gesture = await tester.startGesture(
+      tester.getCenter(find.byType(ListView)),
+    );
+    await gesture.moveBy(const Offset(0, -28));
+    await tester.pump();
+    expect(controller.isCollapsed, isTrue);
+    expect(notices, 1);
+    await gesture.moveBy(const Offset(0, 16));
+    await tester.pump();
+    expect(controller.isCollapsed, isFalse);
+    expect(notices, 2);
+    await gesture.up();
+  });
+
+  testWidgets('a short upward drag during a fling still expands', (
+    tester,
+  ) async {
+    final controller = LiquidGlassCollapseController();
+    addTearDown(controller.dispose);
+    await _pumpScroll(
+      tester,
+      controller: controller,
+      child: ListView(
+        children: [
+          for (var i = 0; i < 40; i++) SizedBox(height: 48, child: Text('$i')),
+        ],
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.fling(find.byType(ListView), const Offset(0, -320), 2000);
+    await tester.pump(const Duration(milliseconds: 30));
+    expect(controller.isCollapsed, isTrue);
+    final gesture = await tester.startGesture(
+      tester.getCenter(find.byType(ListView)),
+    );
+    await gesture.moveBy(const Offset(0, 6));
+    await tester.pump();
+    await gesture.moveBy(const Offset(0, 18));
+    await tester.pump();
+    expect(controller.isCollapsed, isFalse);
+    await gesture.up();
+  });
+
+  testWidgets('rapid direction changes do not stick or notify twice', (
+    tester,
+  ) async {
+    final controller = LiquidGlassCollapseController();
+    addTearDown(controller.dispose);
+    var notices = 0;
+    controller.addListener(() => notices++);
+    await _pumpScroll(
+      tester,
+      controller: controller,
+      child: ListView(
+        children: [
+          for (var i = 0; i < 40; i++) SizedBox(height: 48, child: Text('$i')),
+        ],
+      ),
+    );
+    await tester.pumpAndSettle();
+    final gesture = await tester.startGesture(
+      tester.getCenter(find.byType(ListView)),
+    );
+    for (var i = 0; i < 2; i++) {
+      await gesture.moveBy(const Offset(0, -28));
+      await tester.pump();
+      expect(controller.isCollapsed, isTrue);
+      await gesture.moveBy(const Offset(0, 16));
+      await tester.pump();
+      expect(controller.isCollapsed, isFalse);
+    }
+    expect(notices, 4);
+    await gesture.up();
+    await tester.pumpAndSettle();
+    expect(tester.binding.transientCallbackCount, 0);
+  });
+
+  testWidgets('movement under the dead zone does not request a change', (
+    tester,
+  ) async {
+    final controller = LiquidGlassCollapseController();
+    addTearDown(controller.dispose);
+    final trace = LiquidGlassScrollTrace();
+    var notices = 0;
+    controller.addListener(() => notices++);
+    await _pumpScroll(
+      tester,
+      controller: controller,
+      trace: trace,
+      child: ListView(
+        children: [
+          for (var i = 0; i < 40; i++) SizedBox(height: 48, child: Text('$i')),
+        ],
+      ),
+    );
+    await tester.pumpAndSettle();
+    final gesture = await tester.startGesture(
+      tester.getCenter(find.byType(ListView)),
+    );
+    await gesture.moveBy(const Offset(0, -6));
+    await tester.pump();
+    expect(controller.isCollapsed, isFalse);
+    expect(trace.requests, 0);
+    expect(notices, 0);
+    await gesture.up();
+  });
+
+  testWidgets('bottom overscroll does not collapse and a reverse expands', (
+    tester,
+  ) async {
+    final controller = LiquidGlassCollapseController();
+    addTearDown(controller.dispose);
+    final scroll = ScrollController();
+    addTearDown(scroll.dispose);
+    var notices = 0;
+    controller.addListener(() => notices++);
+    await _pumpScroll(
+      tester,
+      controller: controller,
+      child: ListView(
+        controller: scroll,
+        physics: const BouncingScrollPhysics(),
+        children: [
+          for (var i = 0; i < 8; i++) SizedBox(height: 80, child: Text('$i')),
+        ],
+      ),
+    );
+    await tester.pumpAndSettle();
+    final gesture = await tester.startGesture(
+      tester.getCenter(find.byType(ListView)),
+    );
+    await gesture.moveBy(const Offset(0, -400));
+    await tester.pump();
+    expect(
+      scroll.position.pixels,
+      greaterThan(scroll.position.maxScrollExtent),
+    );
+    expect(controller.isCollapsed, isTrue);
+    expect(notices, 1);
+    await gesture.moveBy(const Offset(0, -80));
+    await tester.pump();
+    expect(notices, 1);
+    await gesture.moveBy(const Offset(0, 16));
+    await tester.pump();
+    expect(controller.isCollapsed, isFalse);
+    await gesture.up();
+  });
+
+  testWidgets('a reverse-axis list collapses toward its end', (tester) async {
+    final controller = LiquidGlassCollapseController();
+    addTearDown(controller.dispose);
+    await _pumpScroll(
+      tester,
+      controller: controller,
+      child: ListView(
+        reverse: true,
+        children: [
+          for (var i = 0; i < 40; i++) SizedBox(height: 48, child: Text('$i')),
+        ],
+      ),
+    );
+    await tester.pumpAndSettle();
+    final gesture = await tester.startGesture(
+      tester.getCenter(find.byType(ListView)),
+    );
+    await gesture.moveBy(const Offset(0, 28));
+    await tester.pump();
+    expect(controller.isCollapsed, isTrue);
+    await gesture.moveBy(const Offset(0, -16));
+    await tester.pump();
+    expect(controller.isCollapsed, isFalse);
+    await gesture.up();
+  });
+
+  testWidgets('the selected icon travels without jumping', (tester) async {
+    final controller = LiquidGlassCollapseController();
+    addTearDown(controller.dispose);
+    await pumpNavigationBar(
+      tester,
+      items: sampleItems(),
+      currentIndex: 0,
+      onIndexChanged: (_) {},
+      enableScrollCollapse: true,
+      collapseController: controller,
+    );
+    await tester.pumpAndSettle();
+    final start = tester.getCenter(find.byIcon(Icons.home_rounded));
+    controller.collapse();
+    await tester.pump();
+    var previousX = start.dx;
+    var previousWidth = tester
+        .renderObject<RenderCollapseMorph>(find.byType(CollapseMorph))
+        .size
+        .width;
+    for (var i = 0; i < 6; i++) {
+      await tester.pump(const Duration(milliseconds: 40));
+      final morph = tester.renderObject<RenderCollapseMorph>(
+        find.byType(CollapseMorph),
+      );
+      final x = tester.getCenter(find.byIcon(Icons.home_rounded)).dx;
+      expect(x, greaterThanOrEqualTo(previousX - 0.5));
+      expect(x - previousX, lessThan(160));
+      expect(morph.debugVisual.width, lessThanOrEqualTo(previousWidth + 0.5));
+      expect(
+        previousWidth - morph.debugVisual.width,
+        lessThan(morph.size.width * 0.5),
+      );
+      previousX = x;
+      previousWidth = morph.debugVisual.width;
+    }
+    await tester.pumpAndSettle();
+    final morph = tester.renderObject<RenderCollapseMorph>(
+      find.byType(CollapseMorph),
+    );
+    final icon = tester.getCenter(find.byIcon(Icons.home_rounded));
+    final center =
+        tester.getTopLeft(find.byType(CollapseMorph)) +
+        morph.debugVisual.center;
+    expect((icon - center).distance, lessThan(12));
+    expect(tester.binding.transientCallbackCount, 0);
+  });
+
+  testWidgets('a reversal continues from the current morph progress', (
+    tester,
+  ) async {
+    final controller = LiquidGlassCollapseController();
+    addTearDown(controller.dispose);
+    await pumpNavigationBar(
+      tester,
+      items: sampleItems(),
+      currentIndex: 0,
+      onIndexChanged: (_) {},
+      enableScrollCollapse: true,
+      collapseController: controller,
+    );
+    await tester.pumpAndSettle();
+    controller.collapse();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 80));
+    final morph = tester.renderObject<RenderCollapseMorph>(
+      find.byType(CollapseMorph),
+    );
+    final mid = morph.debugProgress;
+    expect(mid, greaterThan(0.05));
+    expect(mid, lessThan(0.95));
+    controller.expand();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 16));
+    final next = tester
+        .renderObject<RenderCollapseMorph>(find.byType(CollapseMorph))
+        .debugProgress;
+    expect(next, lessThan(mid));
+    expect(next, greaterThan(0));
+  });
+
+  testWidgets('scrolling while compact does not relayout the glass', (
+    tester,
+  ) async {
+    final controller = LiquidGlassCollapseController();
+    addTearDown(controller.dispose);
+    await _pumpScroll(
+      tester,
+      controller: controller,
+      child: ListView(
+        children: [
+          for (var i = 0; i < 40; i++) SizedBox(height: 48, child: Text('$i')),
+        ],
+      ),
+    );
+    await tester.pumpAndSettle();
+    final gesture = await tester.startGesture(
+      tester.getCenter(find.byType(ListView)),
+    );
+    await gesture.moveBy(const Offset(0, -40));
+    await tester.pump();
+    await gesture.up();
+    await tester.pumpAndSettle();
+    final morph = tester.renderObject<RenderCollapseMorph>(
+      find.byType(CollapseMorph),
+    );
+    final layouts = morph.debugLayoutCount;
+    final again = await tester.startGesture(
+      tester.getCenter(find.byType(ListView)),
+    );
+    await again.moveBy(const Offset(0, -40));
+    await tester.pump();
+    await again.up();
+    await tester.pump();
+    expect(morph.debugLayoutCount, layouts);
+    expect(tester.binding.transientCallbackCount, 0);
+  });
+
+  testWidgets('refractive collapse keeps a finite glass rect', (tester) async {
+    final controller = LiquidGlassCollapseController();
+    addTearDown(controller.dispose);
+    await pumpNavigationBar(
+      tester,
+      items: sampleItems(),
+      currentIndex: 0,
+      onIndexChanged: (_) {},
+      enableScrollCollapse: true,
+      collapseController: controller,
+      motion: const LiquidGlassMotion.none(),
+      material: const LiquidGlassMaterial(
+        mode: LiquidGlassRenderMode.refractive,
+      ),
+    );
+    await tester.pumpAndSettle();
+    controller.collapse();
+    await tester.pump();
+    final morph = tester.renderObject<RenderCollapseMorph>(
+      find.byType(CollapseMorph),
+    );
+    expect(morph.debugVisual.width, lessThan(morph.size.width - 40));
+    expect(morph.debugVisual.width, greaterThan(0));
+    expect(morph.debugVisual.height, greaterThan(0));
+    expect(tester.takeException(), isNull);
+  });
 }
 
 bool _hasLabel(SemanticsNode node, String label) {
@@ -659,6 +996,7 @@ Future<void> _pumpScroll(
   WidgetTester tester, {
   required LiquidGlassCollapseController controller,
   required Widget child,
+  LiquidGlassScrollTrace? trace,
 }) {
   return tester.pumpWidget(
     MaterialApp(
@@ -668,6 +1006,7 @@ Future<void> _pumpScroll(
             Expanded(
               child: LiquidGlassScrollObserver(
                 controller: controller,
+                trace: trace,
                 child: child,
               ),
             ),

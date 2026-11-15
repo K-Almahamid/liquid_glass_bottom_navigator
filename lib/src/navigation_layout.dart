@@ -34,6 +34,7 @@ class LiquidNavigationLayout extends MultiChildRenderObjectWidget {
     required this.morph,
     required this.morphIntensity,
     this.glassSheen = false,
+    this.collapse,
     required super.children,
     super.key,
   });
@@ -91,6 +92,11 @@ class LiquidNavigationLayout extends MultiChildRenderObjectWidget {
   /// Off for classic glass so the approved capsule paint stays the same.
   final bool glassSheen;
 
+  /// Collapse progress. `0` is the expanded bar. Null leaves the capsule as
+  /// painted for the approved resting bar. Above `0` the capsule fades out
+  /// with the unselected items so it is not clipped by the shrinking glass.
+  final Animation<double>? collapse;
+
   @override
   RenderLiquidNavigation createRenderObject(BuildContext context) {
     return RenderLiquidNavigation(
@@ -110,6 +116,7 @@ class LiquidNavigationLayout extends MultiChildRenderObjectWidget {
       morph: morph,
       morphIntensity: morphIntensity,
       glassSheen: glassSheen,
+      collapse: collapse,
     );
   }
 
@@ -134,7 +141,8 @@ class LiquidNavigationLayout extends MultiChildRenderObjectWidget {
       ..indicatorBorderWidth = indicatorBorderWidth
       ..morph = morph
       ..morphIntensity = morphIntensity
-      ..glassSheen = glassSheen;
+      ..glassSheen = glassSheen
+      ..collapse = collapse;
   }
 }
 
@@ -163,8 +171,11 @@ class RenderLiquidNavigation extends RenderBox
     required this._morph,
     required this._morphIntensity,
     required this._glassSheen,
+    Animation<double>? collapse,
   }) {
+    _collapse = collapse;
     _animation.addListener(_handleTick);
+    _collapse?.addListener(_handleTick);
   }
 
   final Paint _fill = Paint()..isAntiAlias = true;
@@ -188,6 +199,7 @@ class RenderLiquidNavigation extends RenderBox
   bool _morph;
   double _morphIntensity;
   bool _glassSheen;
+  Animation<double>? _collapse;
   Rect? _from;
   List<Rect> _itemRects = const <Rect>[];
   List<Rect> _contentRects = const <Rect>[];
@@ -252,6 +264,17 @@ class RenderLiquidNavigation extends RenderBox
     _animation.removeListener(_handleTick);
     _animation = value;
     _animation.addListener(_handleTick);
+    markNeedsPaint();
+  }
+
+  /// Collapse progress. Null keeps the resting capsule paint.
+  set collapse(Animation<double>? value) {
+    if (identical(_collapse, value)) {
+      return;
+    }
+    _collapse?.removeListener(_handleTick);
+    _collapse = value;
+    _collapse?.addListener(_handleTick);
     markNeedsPaint();
   }
 
@@ -441,6 +464,7 @@ class RenderLiquidNavigation extends RenderBox
   @override
   void dispose() {
     _animation.removeListener(_handleTick);
+    _collapse?.removeListener(_handleTick);
     super.dispose();
   }
 
@@ -848,7 +872,11 @@ class RenderLiquidNavigation extends RenderBox
     final indicator = _visualRect();
     _paintedIndicator = indicator;
     _paintedPath = null;
-    if (indicator != null) {
+    final collapseT = _collapse?.value ?? 0;
+    final capsuleFade = collapseT <= 0
+        ? 1.0
+        : (1 - collapseT / 0.45).clamp(0.0, 1.0);
+    if (indicator != null && capsuleFade > 0) {
       final radius = _cornerRadius(indicator);
       final amount = _blobAmount();
       final travelRight = _travelRight();
@@ -860,15 +888,21 @@ class RenderLiquidNavigation extends RenderBox
       );
       _paintedPath = local;
       final bubble = local.shift(offset);
-      _fill.color = _indicatorColor;
+      _fill.color = capsuleFade >= 1
+          ? _indicatorColor
+          : _indicatorColor.withValues(alpha: _indicatorColor.a * capsuleFade);
       context.canvas.drawPath(bubble, _fill);
       if (_indicatorBorderWidth > 0 && _indicatorBorderColor.a > 0) {
         _stroke
-          ..color = _indicatorBorderColor
+          ..color = capsuleFade >= 1
+              ? _indicatorBorderColor
+              : _indicatorBorderColor.withValues(
+                  alpha: _indicatorBorderColor.a * capsuleFade,
+                )
           ..strokeWidth = _indicatorBorderWidth;
         context.canvas.drawPath(bubble, _stroke);
       }
-      if (_glassSheen) {
+      if (_glassSheen && capsuleFade >= 1) {
         final sheen = Paint()
           ..style = PaintingStyle.stroke
           ..strokeWidth = 1.25

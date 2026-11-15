@@ -660,14 +660,17 @@ class _LiquidGlassNavigationBarState extends State<LiquidGlassNavigationBar>
     if (_morphingToward == target && _visibility!.isAnimating) {
       return;
     }
-    final full = target >= current ? 300 : 340;
+    final collapsing = target >= current;
+    // Collapse eases through the mid shape. Expand starts moving immediately
+    // so a short upward scroll does not feel like it stalled.
+    final full = collapsing ? 260 : 220;
     final milliseconds = math.max(1, (full * (target - current).abs()).round());
     _morphingToward = target;
     _visibility!.stop();
     _visibility!.animateTo(
       target,
       duration: Duration(milliseconds: milliseconds),
-      curve: Curves.easeOutCubic,
+      curve: collapsing ? Curves.easeInOutCubic : Curves.easeOutCubic,
     );
   }
 
@@ -756,6 +759,7 @@ class _LiquidGlassNavigationBarState extends State<LiquidGlassNavigationBar>
       morph: morph,
       morphIntensity: widget.motion.morphIntensity,
       glassSheen: widget.material.mode != LiquidGlassRenderMode.classic,
+      collapse: widget.enableScrollCollapse ? _visibility : null,
       children: <Widget>[
         for (var i = 0; i < widget.items.length; i++)
           _item(

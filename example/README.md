@@ -10,7 +10,7 @@ The tune button opens Appearance. The controls are grouped and none of the previ
 - Layout: equal or intrinsic slots, compact width, safe area, right to left, labels, item count
 - Dimensions: blur, height, radius, margin, padding, item spacing
 
-Drag the selected destination when drag selection is on. Scroll collapse starts on in this gallery and off in the package. Scrolling the active page down contracts the full bar into the selected icon. Scrolling up, or returning to the top, expands it again. Turning the control off expands the bar immediately. Changing destination expands it too. Inactive pages do not drive it. Tapping the compact button expands the bar and does not change the selection.
+Drag the selected destination when drag selection is on. Scroll collapse starts on in this gallery and off in the package. A short downward scroll on the active page contracts the full bar into the selected icon. A short upward scroll, including a reversal in the same drag, expands it again. Turning the control off expands the bar immediately. Changing destination expands it too. Inactive pages do not drive it. Tapping the compact button expands the bar and does not change the selection.
 
 ```bash
 flutter pub get

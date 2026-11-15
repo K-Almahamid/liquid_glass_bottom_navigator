@@ -245,6 +245,15 @@ class RenderCollapseMorph extends RenderProxyBox {
 
   double get _t => _animation.value.clamp(0.0, 1.0);
 
+  /// Morph progress. `0` is the expanded bar and `1` is the compact control.
+  double get debugProgress => _t;
+
+  /// Layout passes since this render object was created.
+  int debugLayoutCount = 0;
+
+  /// Paint passes since this render object was created.
+  int debugPaintCount = 0;
+
   /// Glass bounds in this box, at the current animation value.
   Rect get debugVisual {
     if (!hasSize) {
@@ -273,8 +282,22 @@ class RenderCollapseMorph extends RenderProxyBox {
   }
 
   BorderRadius _radius(Rect visual) {
-    final compact = BorderRadius.circular(visual.shortestSide / 2);
-    return BorderRadius.lerp(_expandedRadius, compact, _t)!;
+    final cap = visual.shortestSide / 2;
+    final compact = BorderRadius.circular(cap);
+    final lerped = BorderRadius.lerp(_expandedRadius, compact, _t)!;
+    Radius clampRadius(Radius radius) {
+      return Radius.elliptical(
+        math.min(radius.x, cap),
+        math.min(radius.y, cap),
+      );
+    }
+
+    return BorderRadius.only(
+      topLeft: clampRadius(lerped.topLeft),
+      topRight: clampRadius(lerped.topRight),
+      bottomLeft: clampRadius(lerped.bottomLeft),
+      bottomRight: clampRadius(lerped.bottomRight),
+    );
   }
 
   /// Paint translation of the item row, in this box.
@@ -377,6 +400,21 @@ class RenderCollapseMorph extends RenderProxyBox {
   }
 
   @override
+  void performLayout() {
+    debugLayoutCount++;
+    super.performLayout();
+  }
+
+  @override
+  void applyPaintTransform(RenderBox child, Matrix4 transform) {
+    if (child.hasSize) {
+      _anchor = _resolveAnchor(child);
+    }
+    final shift = _shift;
+    transform.translateByDouble(shift.dx, shift.dy, 0, 1);
+  }
+
+  @override
   bool hitTest(BoxHitTestResult result, {required Offset position}) {
     if (!hasSize) {
       return false;
@@ -394,6 +432,7 @@ class RenderCollapseMorph extends RenderProxyBox {
 
   @override
   void paint(PaintingContext context, Offset offset) {
+    debugPaintCount++;
     final child = this.child;
     if (child == null || !child.hasSize || size.isEmpty) {
       return;
