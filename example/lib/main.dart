@@ -38,7 +38,7 @@ class _LiquidGlassExampleAppState extends State<LiquidGlassExampleApp> {
   ];
 
   static const _capture = bool.fromEnvironment('CAPTURE');
-  static const _captureCollapse = bool.fromEnvironment('CAPTURE_COLLAPSE');
+  static const _captureAutoHide = bool.fromEnvironment('CAPTURE_AUTOHIDE');
   static const _glassCapture = String.fromEnvironment('GLASS_CAPTURE');
 
   int _index = 0;
@@ -54,21 +54,21 @@ class _LiquidGlassExampleAppState extends State<LiquidGlassExampleApp> {
     ),
     _ => const ExampleControls(),
   };
-  final LiquidGlassCollapseController _collapse =
-      LiquidGlassCollapseController();
+  final LiquidGlassVisibilityController _visibility =
+      LiquidGlassVisibilityController();
 
   @override
   void dispose() {
-    _collapse.dispose();
+    _visibility.dispose();
     super.dispose();
   }
 
   @override
   void initState() {
     super.initState();
-    if (_captureCollapse) {
+    if (_captureAutoHide) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        _captureCollapseTour();
+        _captureAutoHideTour();
       });
     } else if (_glassCapture == 'tour') {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -136,65 +136,66 @@ class _LiquidGlassExampleAppState extends State<LiquidGlassExampleApp> {
     debugPrint('CAPTURE gif-end');
   }
 
-  /// Settled collapse stills. Used only with `--dart-define=CAPTURE_COLLAPSE=true`.
-  Future<void> _captureCollapseTour() async {
+  /// Slide stills driven by the visibility controller.
+  ///
+  /// Used only with `--dart-define=CAPTURE_AUTOHIDE=true`. These frames are
+  /// the same animation a scroll would start. They are not a finger scroll.
+  Future<void> _captureAutoHideTour() async {
     const light = ExampleControls(
       themeMode: ThemeMode.light,
-      scrollCollapse: true,
-      motion: GalleryMotionPreset.gentle,
+      scrollAutoHide: true,
     );
     Future<void> show(
       String name,
       ExampleControls controls,
       int index, {
-      bool? collapsed,
+      bool? hidden,
     }) async {
       setState(() {
         _controls = controls;
         _index = index;
       });
-      if (collapsed == true) {
-        _collapse.collapse();
-      } else if (collapsed == false) {
-        _collapse.expand();
+      if (hidden == true) {
+        _visibility.hide();
+      } else if (hidden == false) {
+        _visibility.show();
       }
-      await Future<void>.delayed(const Duration(milliseconds: 1400));
+      await Future<void>.delayed(const Duration(milliseconds: 900));
       debugPrint('CAPTURE $name');
-      await Future<void>.delayed(const Duration(milliseconds: 350));
+      await Future<void>.delayed(const Duration(milliseconds: 250));
     }
 
-    await show('collapse-expanded-home', light, 0, collapsed: false);
-    _collapse.collapse();
-    await Future<void>.delayed(const Duration(milliseconds: 220));
-    debugPrint('CAPTURE collapse-mid');
-    await Future<void>.delayed(const Duration(milliseconds: 1200));
-    debugPrint('CAPTURE collapsed-home');
-    await show('collapsed-inbox', light, 2, collapsed: true);
-    await show('collapsed-profile', light, 4, collapsed: true);
-    _collapse.expand();
-    await Future<void>.delayed(const Duration(milliseconds: 220));
-    debugPrint('CAPTURE expand-mid');
-    await Future<void>.delayed(const Duration(milliseconds: 1200));
+    await show('autohide-visible', light, 0, hidden: false);
+    _visibility.hide();
+    await Future<void>.delayed(const Duration(milliseconds: 120));
+    debugPrint('CAPTURE autohide-mid-hide');
+    await Future<void>.delayed(const Duration(milliseconds: 700));
+    debugPrint('CAPTURE autohide-hidden');
+    _visibility.show();
+    await Future<void>.delayed(const Duration(milliseconds: 140));
+    debugPrint('CAPTURE autohide-mid-show');
+    await Future<void>.delayed(const Duration(milliseconds: 700));
+    await show('autohide-restored', light, 0, hidden: false);
     await show(
-      'collapsed-dark-home',
+      'autohide-dark',
       light.copyWith(themeMode: ThemeMode.dark),
       0,
-      collapsed: true,
+      hidden: false,
     );
     await show(
-      'collapsed-icons',
+      'autohide-icons',
       light.copyWith(labelMode: LiquidGlassLabelMode.hidden),
       0,
-      collapsed: true,
+      hidden: false,
     );
     await show(
-      'collapsed-selected',
+      'autohide-selected',
       light.copyWith(labelMode: LiquidGlassLabelMode.selected),
       2,
-      collapsed: true,
+      hidden: false,
     );
-    await show('collapsed-rtl', light.copyWith(rtl: true), 0, collapsed: true);
-    debugPrint('CAPTURE collapse-done');
+    await show('autohide-rtl', light.copyWith(rtl: true), 0, hidden: false);
+    debugPrint('CAPTURE autohide-done');
   }
 
   /// Still comparison of the three glass modes. Used only with
@@ -252,11 +253,14 @@ class _LiquidGlassExampleAppState extends State<LiquidGlassExampleApp> {
     debugPrint('CAPTURE glass-done');
   }
 
-  void _select(int index) => setState(() => _index = index);
+  void _select(int index) {
+    _visibility.show();
+    setState(() => _index = index);
+  }
 
   void _apply(ExampleControls next) {
-    if (!next.scrollCollapse) {
-      _collapse.expand();
+    if (!next.scrollAutoHide) {
+      _visibility.show();
     }
     setState(() {
       _controls = next;
@@ -288,7 +292,7 @@ class _LiquidGlassExampleAppState extends State<LiquidGlassExampleApp> {
                 readControls: () => _controls,
                 onSelect: _select,
                 onApply: _apply,
-                collapse: _collapse,
+                visibility: _visibility,
                 items: _items(context),
               ),
             ),
@@ -341,7 +345,7 @@ class _GalleryShell extends StatelessWidget {
     required this.readControls,
     required this.onSelect,
     required this.onApply,
-    required this.collapse,
+    required this.visibility,
     required this.items,
   });
 
@@ -350,7 +354,7 @@ class _GalleryShell extends StatelessWidget {
   final ExampleControls Function() readControls;
   final ValueChanged<int> onSelect;
   final ValueChanged<ExampleControls> onApply;
-  final LiquidGlassCollapseController collapse;
+  final LiquidGlassVisibilityController visibility;
   final List<LiquidGlassNavigationItem> items;
 
   @override
@@ -417,7 +421,6 @@ class _GalleryShell extends StatelessWidget {
                     onPressed: () => showAppearanceSheet(
                       context: context,
                       controls: readControls,
-                      collapse: collapse,
                       onChanged: onApply,
                     ),
                     color: colors.ink,
@@ -440,8 +443,8 @@ class _GalleryShell extends StatelessWidget {
               motion: controls.motion.value,
               hapticsEnabled: controls.haptics,
               enableDragSelection: controls.dragSelection,
-              enableCollapse: controls.scrollCollapse,
-              collapseController: collapse,
+              enableScrollAutoHide: controls.scrollAutoHide,
+              visibilityController: visibility,
               material: controls.material,
               items: items,
               style: LiquidGlassNavigationStyle(
@@ -473,10 +476,14 @@ class _GalleryShell extends StatelessWidget {
   }
 
   Widget _observed(int page, Widget child) {
-    if (!controls.scrollCollapse || index != page) {
+    if (!controls.scrollAutoHide) {
       return child;
     }
-    return LiquidGlassScrollObserver(controller: collapse, child: child);
+    return LiquidGlassScrollObserver(
+      controller: visibility,
+      enabled: index == page,
+      child: child,
+    );
   }
 
   double _bottomInset(BuildContext context) {

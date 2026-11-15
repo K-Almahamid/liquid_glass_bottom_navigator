@@ -76,7 +76,7 @@ class LiquidNavigationItemView extends StatelessWidget {
   final VoidCallback onTap;
 
   /// Opacity of a visible label. 1 keeps the approved label. Lower values
-  /// fade it during collapse without changing the label's layout size.
+  /// fade it without changing the label's layout size.
   final double labelOpacity;
 
   @override

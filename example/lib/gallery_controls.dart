@@ -80,7 +80,7 @@ class ExampleControls {
     this.equalSlots = true,
     this.respectSafeArea = true,
     this.dragSelection = true,
-    this.scrollCollapse = false,
+    this.scrollAutoHide = true,
     this.glassMode = LiquidGlassRenderMode.classic,
     this.glassVariant = LiquidGlassMaterialVariant.regular,
     this.refractionStrength = 0.35,
@@ -147,8 +147,8 @@ class ExampleControls {
   /// Horizontal drag from the selected destination.
   final bool dragSelection;
 
-  /// Whether the active page can collapse the bar while scrolling.
-  final bool scrollCollapse;
+  /// Whether the active page hides the bar while scrolling down.
+  final bool scrollAutoHide;
 
   /// Classic blur, enhanced veil, or refractive sampling.
   final LiquidGlassRenderMode glassMode;
@@ -204,7 +204,7 @@ class ExampleControls {
     bool? equalSlots,
     bool? respectSafeArea,
     bool? dragSelection,
-    bool? scrollCollapse,
+    bool? scrollAutoHide,
     LiquidGlassRenderMode? glassMode,
     LiquidGlassMaterialVariant? glassVariant,
     double? refractionStrength,
@@ -233,7 +233,7 @@ class ExampleControls {
       equalSlots: equalSlots ?? this.equalSlots,
       respectSafeArea: respectSafeArea ?? this.respectSafeArea,
       dragSelection: dragSelection ?? this.dragSelection,
-      scrollCollapse: scrollCollapse ?? this.scrollCollapse,
+      scrollAutoHide: scrollAutoHide ?? this.scrollAutoHide,
       glassMode: glassMode ?? this.glassMode,
       glassVariant: glassVariant ?? this.glassVariant,
       refractionStrength: refractionStrength ?? this.refractionStrength,

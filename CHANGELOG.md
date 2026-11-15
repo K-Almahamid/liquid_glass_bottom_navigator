@@ -4,11 +4,11 @@
 * `enhanced` keeps that blur and adds a theme-driven veil and capsule highlight. It does not sample backdrop pixels.
 * `refractive` displaces the backdrop near the glass edge on Impeller, through one composed blur and `ImageFilter.shader`. Other backends, a failed shader load, and the load itself paint `enhanced` instead. Icons and labels stay on the theme. High contrast makes the enhanced and refractive fills more opaque.
 * `regular` and `clear` change how much of the backdrop the fill keeps. Clear is the lighter of the two.
-* Adds optional scroll-aware collapse. `enableCollapse` defaults to false, so 1.1.0 bars stay expanded.
-* `LiquidGlassCollapseController` holds the expanded or collapsed target. `collapse`, `expand`, and `toggle` do not notify when the target is already current. The bar owns the animation. It does not dispose a controller the caller passed in.
-* `LiquidGlassScrollObserver` collapses on downward user scrolling and expands on upward scrolling, after 48 logical pixels in one direction. It ignores horizontal lists, nested scrollables at depth greater than 0, and programmatic `jumpTo` or `animateTo`. It does not consume scroll notifications.
-* The glass shrinks toward the trailing edge into a compact button showing the selected icon. Tapping that button expands the bar and does not call `onIndexChanged` or play haptics. A collapse requested during a destination drag waits until the drag ends. The compact button does not drag between destinations.
-* While `enableCollapse` is false, a controller whose target is collapsed is ignored and the bar stays expanded.
+* Adds optional scroll auto-hide. `enableScrollAutoHide` defaults to false, so 1.1.0 bars stay on screen.
+* `LiquidGlassVisibilityController` holds the visible or hidden target. `hide`, `show`, and `toggle` do not notify when the target is already current. The bar owns the slide. It does not dispose a controller the caller passed in.
+* `LiquidGlassScrollObserver` hides after about 40 logical pixels of downward user scrolling and shows after about 12 of upward scrolling. A user scroll at the top shows the bar. The observer ignores horizontal lists, nested scrollables at depth greater than 0, and programmatic `jumpTo` or `animateTo`. `enabled` false keeps the child mounted and ignores it. The observer does not consume scroll notifications.
+* The whole bar translates below the view. It does not change glass size, capsule geometry, or the selected index. A hide requested during a destination drag waits until the drag ends. A moving or hidden bar does not take hits and leaves the semantics tree. Reduced motion jumps to the target offset.
+* While `enableScrollAutoHide` is false, a controller whose target is hidden is ignored and the bar stays visible.
 
 ## 1.1.0
 

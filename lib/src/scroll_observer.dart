@@ -1,18 +1,18 @@
 import 'package:flutter/widgets.dart';
 
-import 'collapse_controller.dart';
+import 'visibility_controller.dart';
 
-/// Connects vertical user scrolling to a [LiquidGlassCollapseController].
+/// Connects vertical user scrolling to a [LiquidGlassVisibilityController].
 ///
 /// Place this above the page that should drive the bar. The bar does not
 /// need to be an ancestor, and the scrollable does not need to hand over its
 /// [ScrollController].
 ///
 /// Scrolling down, toward the end of an ordinary vertical list, requests
-/// collapse. Scrolling up requests expansion. Movement in one direction has
-/// to accumulate [threshold] logical pixels before the controller is asked
-/// to change, and the accumulator resets when the direction changes. A
-/// request for the state the controller already has does not notify.
+/// hide after [hideThreshold] logical pixels. Scrolling up requests show
+/// after [showThreshold], which is shorter so the bar returns quickly. The
+/// accumulator resets when the direction changes. A request for the state
+/// the controller already has does not notify.
 ///
 /// The default predicate accepts a vertical notification at depth 0. A
 /// horizontal list, including one nested in the vertical page, does not
@@ -24,33 +24,47 @@ import 'collapse_controller.dart';
 /// Notifications are not consumed. The listener always returns false.
 ///
 /// Finger drags count. A ballistic scroll that continues a finger drag
-/// counts. [ScrollController.jumpTo] and [ScrollController.animateTo] do not,
-/// except that a user scroll which is already within [topExpandExtent] of
-/// the top expands the bar. Pulling down while overscrolled at the top also
-/// expands. Overscroll in the other direction does not collapse.
+/// counts. [ScrollController.jumpTo] and [ScrollController.animateTo] do not.
+/// A user scroll that reaches [topShowExtent] of the top shows the bar.
+/// Pulling down while overscrolled at the top also shows it. Overscroll at
+/// the bottom does not hide it.
 class LiquidGlassScrollObserver extends StatefulWidget {
   /// Creates an observer for [controller].
   const LiquidGlassScrollObserver({
     required this.controller,
     required this.child,
-    this.threshold = 48,
-    this.topExpandExtent = 12,
+    this.hideThreshold = 40,
+    this.showThreshold = 12,
+    this.topShowExtent = 12,
+    this.enabled = true,
     this.notificationPredicate,
     super.key,
-  }) : assert(threshold > 0),
-       assert(topExpandExtent >= 0);
+  }) : assert(hideThreshold > 0),
+       assert(showThreshold > 0),
+       assert(topShowExtent >= 0);
 
-  /// Collapse target updated by accepted scrolls.
-  final LiquidGlassCollapseController controller;
+  /// Visibility target updated by accepted scrolls.
+  final LiquidGlassVisibilityController controller;
 
   /// Scrollable page. Nested scrollables bubble through this child.
   final Widget child;
 
-  /// Accumulated movement, in logical pixels, required to change state.
-  final double threshold;
+  /// Downward movement, in logical pixels, required before a hide.
+  final double hideThreshold;
 
-  /// Distance from the top, in logical pixels, that expands the bar.
-  final double topExpandExtent;
+  /// Upward movement, in logical pixels, required before a show.
+  final double showThreshold;
+
+  /// Distance from the top, in logical pixels, that shows the bar.
+  final double topShowExtent;
+
+  /// Whether this observer may change [controller].
+  ///
+  /// False keeps the child mounted and drops its notifications. Use that for
+  /// a page that stays alive in an [IndexedStack] while another page is
+  /// showing, so the idle page does not hide the bar and its scroll offset
+  /// is not recreated on every destination change.
+  final bool enabled;
 
   /// Which notifications are eligible. Null uses vertical depth 0.
   final bool Function(ScrollNotification notification)? notificationPredicate;
@@ -75,6 +89,9 @@ class _LiquidGlassScrollObserverState extends State<LiquidGlassScrollObserver> {
   int _endGeneration = 0;
 
   bool _onNotification(ScrollNotification notification) {
+    if (!widget.enabled) {
+      return false;
+    }
     final allow =
         widget.notificationPredicate?.call(notification) ??
         LiquidGlassScrollObserver.defaultPredicate(notification);
@@ -135,14 +152,14 @@ class _LiquidGlassScrollObserverState extends State<LiquidGlassScrollObserver> {
         metrics.pixels > metrics.maxScrollExtent;
     if (overscrolled) {
       if (!visualDown && metrics.pixels <= metrics.minScrollExtent) {
-        widget.controller.expand();
+        widget.controller.show();
         _accumulated = 0;
       }
       return;
     }
-    if ((metrics.pixels - metrics.minScrollExtent) <= widget.topExpandExtent &&
+    if ((metrics.pixels - metrics.minScrollExtent) <= widget.topShowExtent &&
         !visualDown) {
-      widget.controller.expand();
+      widget.controller.show();
       _accumulated = 0;
       _down = false;
       return;
@@ -155,14 +172,15 @@ class _LiquidGlassScrollObserverState extends State<LiquidGlassScrollObserver> {
       _down = visualDown;
     }
     _accumulated += delta.abs();
-    if (_accumulated < widget.threshold) {
+    final limit = visualDown ? widget.hideThreshold : widget.showThreshold;
+    if (_accumulated < limit) {
       return;
     }
     _accumulated = 0;
     if (visualDown) {
-      widget.controller.collapse();
+      widget.controller.hide();
     } else {
-      widget.controller.expand();
+      widget.controller.show();
     }
   }
 

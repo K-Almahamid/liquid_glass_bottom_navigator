@@ -5,12 +5,12 @@ A gallery for the local package. Home, Search, Inbox, Saved, and Profile scroll 
 The tune button opens Appearance. The controls are grouped and none of the previous options are removed:
 
 - Appearance: theme, label mode, indicator style
-- Motion: spring, snappy, gentle, none, drag selection, scroll collapse, haptics, reduced motion
+- Motion: spring, snappy, gentle, none, drag selection, scroll auto-hide, haptics, reduced motion
 - Glass: classic, enhanced, or refractive, with regular or clear fill and a comparison backdrop
 - Layout: equal or intrinsic slots, compact width, safe area, right to left, labels, item count
 - Dimensions: blur, height, radius, margin, padding, item spacing
 
-Drag the selected destination when drag selection is on. The bar stays fixed while the page scrolls unless Scroll collapse is on. That control lets the active page shrink the bar into the selected icon. Scroll back up, or tap the icon, to open the full bar. Inactive pages do not drive it.
+Drag the selected destination when drag selection is on. Scroll Auto-Hide starts on in this gallery and off in the package. Scrolling the active page down slides the full bar off the bottom. Scrolling up, or returning to the top, brings it back. Turning the control off shows the bar immediately. Changing destination shows it too. Inactive pages do not drive it. There is no collapsed button.
 
 ```bash
 flutter pub get

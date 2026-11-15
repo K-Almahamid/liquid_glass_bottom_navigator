@@ -6,7 +6,7 @@ import 'package:liquid_glass_bottom_navigator_example/main.dart';
 
 void main() {
   testWidgets(
-    'five destinations render and the bar stays put while scrolling',
+    'five destinations render and scrolling hides then shows the bar',
     (tester) async {
       await tester.pumpWidget(const LiquidGlassExampleApp());
       await tester.pumpAndSettle();
@@ -53,6 +53,17 @@ void main() {
       expect(home.position.pixels, greaterThan(40));
       expect(tester.getTopLeft(bar), before);
       expect(_bar(tester).currentIndex, 0);
+      expect(_bar(tester).enableScrollAutoHide, isTrue);
+
+      final reveal = await tester.startGesture(
+        tester.getCenter(find.byKey(const ValueKey('home-scroll'))),
+      );
+      for (var step = 0; step < 8; step++) {
+        await reveal.moveBy(const Offset(0, 4));
+        await tester.pump(const Duration(milliseconds: 30));
+      }
+      await reveal.up();
+      await tester.pumpAndSettle();
 
       await tapTab(tester, find.byIcon(Icons.search_rounded));
       expect(_title(tester), 'Search');
@@ -271,6 +282,11 @@ void main() {
     await tester.drag(
       find.byKey(const ValueKey('home-scroll')),
       const Offset(0, -120),
+    );
+    await tester.pumpAndSettle();
+    await tester.drag(
+      find.byKey(const ValueKey('home-scroll')),
+      const Offset(0, 40),
     );
     await tester.pumpAndSettle();
     await tapTab(tester, find.byIcon(Icons.search_rounded));

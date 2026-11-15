@@ -105,34 +105,34 @@ LiquidGlassNavigationBar(
 
 `refractive` does read them, on Impeller only. The shader moves samples near the rounded edge and mixes a luminance veil into the fill. It does not recolor icons or labels. If the backend cannot build an image-filter shader, or the shader fails to load, the bar paints `enhanced`. Flutter does not expose a reduced-transparency flag. High contrast makes the enhanced and refractive fills more opaque. Classic is unchanged.
 
-## Scroll collapse
+## Scroll auto-hide
 
-Collapse is off unless `enableCollapse` is true. The default bar is the expanded 1.1.0 layout.
+Auto-hide is off unless `enableScrollAutoHide` is true. The default bar stays where 1.1.0 put it. Turning the flag on does not watch a sibling list by itself. Share one `LiquidGlassVisibilityController` with a `LiquidGlassScrollObserver` wrapped around the scroll view.
 
 ```dart
-final collapse = LiquidGlassCollapseController();
+final visibility = LiquidGlassVisibilityController();
 
 LiquidGlassScrollObserver(
-  controller: collapse,
+  controller: visibility,
   child: ListView(
     children: const [/* page content */],
   ),
 )
 
 LiquidGlassNavigationBar(
-  enableCollapse: true,
-  collapseController: collapse,
+  enableScrollAutoHide: true,
+  visibilityController: visibility,
   currentIndex: index,
   onIndexChanged: (value) => setState(() => index = value),
   items: items,
 )
 ```
 
-Scrolling down asks the controller to collapse. Scrolling up, or reaching the top, asks it to expand. The bar animates between the full glass row and a compact trailing button that shows the selected icon. Tapping that button expands the bar. It does not change `currentIndex`, call `onIndexChanged`, or play selection haptics.
+Scrolling down asks the controller to hide after about 40 logical pixels. Scrolling up asks it to show after about 12. Reaching the top of a user scroll shows it as well. The whole bar slides down past the bottom of the view and slides back. It does not shrink, fade item by item, or turn into another control. `currentIndex` does not change.
 
-You own `LiquidGlassCollapseController`. The bar listens to it and does not dispose it. Dispose the controller after the bar is gone, or clear `collapseController` first. `collapse`, `expand`, and `toggle` are silent when the target is already current. Pass one controller to every scroll view that should drive the same bar. The default observer listens to the vertical scrollable it wraps, not to a nested horizontal list. Wrap a nested vertical list itself, or pass `notificationPredicate`, when that list should drive the bar.
+You own `LiquidGlassVisibilityController`. The bar listens to it and does not dispose it. Dispose the controller after the bar is gone, or clear `visibilityController` first. `hide`, `show`, and `toggle` are silent when the target is already current. Call `show()` when a screen should put the bar back, including for someone who cannot scroll. Pass one controller to every scroll view that should drive the same bar. Keep an observer on each page that stays alive, and set `enabled` false on the pages that are not showing, so an idle page does not hide the bar and its scroll offset stays put. The default observer listens to the vertical scrollable it wraps, not to a nested horizontal list. Wrap a nested vertical list itself, or pass `notificationPredicate`, when that list should drive the bar. `jumpTo` and `animateTo` are not treated as a user gesture.
 
-With `enableCollapse` false, the bar stays expanded even if the controller's target is collapsed. A collapse request during a destination drag waits until the drag ends. The compact button does not start a destination drag. Reduced motion jumps to the target shape.
+With `enableScrollAutoHide` false, the bar stays visible even if the controller's target is hidden. A hide request during a destination drag waits until the drag ends. While the bar is moving or hidden it does not take hits, and its destinations leave the semantics tree. Reduced motion jumps to the target offset.
 
 ## Items
 
@@ -263,6 +263,6 @@ Replace `macos` with the physical iPhone device id for that follow-up. See `exam
 
 ## Versioning
 
-Version `1.2.0` adds optional scroll collapse and stays compatible with `1.1.0` when `enableCollapse` is left false. The license is BSD 3-Clause. See [LICENSE](LICENSE). Issues: https://github.com/K-Almahamid/liquid_glass_bottom_navigator/issues.
+Version `1.2.0` adds optional scroll auto-hide and stays compatible with `1.1.0` when `enableScrollAutoHide` is left false. The license is BSD 3-Clause. See [LICENSE](LICENSE). Issues: https://github.com/K-Almahamid/liquid_glass_bottom_navigator/issues.
 
 Source: https://github.com/K-Almahamid/liquid_glass_bottom_navigator
