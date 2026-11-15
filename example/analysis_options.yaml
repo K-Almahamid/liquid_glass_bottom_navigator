@@ -16,6 +16,10 @@ analyzer:
     - ios/**
     - web/**
     - macos/**
+  errors:
+    # Flutter 3.50 deprecates package:flutter/material.dart. The example
+    # stays on the package's Flutter 3.47 import.
+    deprecated_member_use: ignore
 
 linter:
   # The lint rules applied to this project can be customized in the

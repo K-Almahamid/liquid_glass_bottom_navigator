@@ -36,14 +36,27 @@ class _LiquidGlassExampleAppState extends State<LiquidGlassExampleApp> {
   ];
 
   static const _capture = bool.fromEnvironment('CAPTURE');
+  static const _captureCollapse = bool.fromEnvironment('CAPTURE_COLLAPSE');
 
   int _index = 0;
   ExampleControls _controls = const ExampleControls();
+  final LiquidGlassCollapseController _collapse =
+      LiquidGlassCollapseController();
+
+  @override
+  void dispose() {
+    _collapse.dispose();
+    super.dispose();
+  }
 
   @override
   void initState() {
     super.initState();
-    if (_capture) {
+    if (_captureCollapse) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _captureCollapseTour();
+      });
+    } else if (_capture) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _captureTour();
       });
@@ -105,9 +118,73 @@ class _LiquidGlassExampleAppState extends State<LiquidGlassExampleApp> {
     debugPrint('CAPTURE gif-end');
   }
 
+  /// Settled collapse stills. Used only with `--dart-define=CAPTURE_COLLAPSE=true`.
+  Future<void> _captureCollapseTour() async {
+    const light = ExampleControls(
+      themeMode: ThemeMode.light,
+      scrollCollapse: true,
+      motion: GalleryMotionPreset.gentle,
+    );
+    Future<void> show(
+      String name,
+      ExampleControls controls,
+      int index, {
+      bool? collapsed,
+    }) async {
+      setState(() {
+        _controls = controls;
+        _index = index;
+      });
+      if (collapsed == true) {
+        _collapse.collapse();
+      } else if (collapsed == false) {
+        _collapse.expand();
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 1400));
+      debugPrint('CAPTURE $name');
+      await Future<void>.delayed(const Duration(milliseconds: 350));
+    }
+
+    await show('collapse-expanded-home', light, 0, collapsed: false);
+    _collapse.collapse();
+    await Future<void>.delayed(const Duration(milliseconds: 220));
+    debugPrint('CAPTURE collapse-mid');
+    await Future<void>.delayed(const Duration(milliseconds: 1200));
+    debugPrint('CAPTURE collapsed-home');
+    await show('collapsed-inbox', light, 2, collapsed: true);
+    await show('collapsed-profile', light, 4, collapsed: true);
+    _collapse.expand();
+    await Future<void>.delayed(const Duration(milliseconds: 220));
+    debugPrint('CAPTURE expand-mid');
+    await Future<void>.delayed(const Duration(milliseconds: 1200));
+    await show(
+      'collapsed-dark-home',
+      light.copyWith(themeMode: ThemeMode.dark),
+      0,
+      collapsed: true,
+    );
+    await show(
+      'collapsed-icons',
+      light.copyWith(labelMode: LiquidGlassLabelMode.hidden),
+      0,
+      collapsed: true,
+    );
+    await show(
+      'collapsed-selected',
+      light.copyWith(labelMode: LiquidGlassLabelMode.selected),
+      2,
+      collapsed: true,
+    );
+    await show('collapsed-rtl', light.copyWith(rtl: true), 0, collapsed: true);
+    debugPrint('CAPTURE collapse-done');
+  }
+
   void _select(int index) => setState(() => _index = index);
 
   void _apply(ExampleControls next) {
+    if (!next.scrollCollapse) {
+      _collapse.expand();
+    }
     setState(() {
       _controls = next;
       if (_index >= next.itemCount) {
@@ -138,6 +215,7 @@ class _LiquidGlassExampleAppState extends State<LiquidGlassExampleApp> {
                 readControls: () => _controls,
                 onSelect: _select,
                 onApply: _apply,
+                collapse: _collapse,
                 items: _items(context),
               ),
             ),
@@ -190,6 +268,7 @@ class _GalleryShell extends StatelessWidget {
     required this.readControls,
     required this.onSelect,
     required this.onApply,
+    required this.collapse,
     required this.items,
   });
 
@@ -198,6 +277,7 @@ class _GalleryShell extends StatelessWidget {
   final ExampleControls Function() readControls;
   final ValueChanged<int> onSelect;
   final ValueChanged<ExampleControls> onApply;
+  final LiquidGlassCollapseController collapse;
   final List<LiquidGlassNavigationItem> items;
 
   @override
@@ -214,19 +294,34 @@ class _GalleryShell extends StatelessWidget {
             index: index,
             sizing: StackFit.expand,
             children: [
-              HomeDestination(
-                bottomInset: inset,
-                active: index == 0,
-                dragEnabled: controls.dragSelection,
+              _observed(
+                0,
+                HomeDestination(
+                  bottomInset: inset,
+                  active: index == 0,
+                  dragEnabled: controls.dragSelection,
+                ),
               ),
-              SearchDestination(bottomInset: inset, active: index == 1),
-              InboxDestination(bottomInset: inset, active: index == 2),
-              SavedDestination(
-                key: const ValueKey('saved-page'),
-                bottomInset: inset,
-                active: index == 3,
+              _observed(
+                1,
+                SearchDestination(bottomInset: inset, active: index == 1),
               ),
-              ProfileDestination(bottomInset: inset, active: index == 4),
+              _observed(
+                2,
+                InboxDestination(bottomInset: inset, active: index == 2),
+              ),
+              _observed(
+                3,
+                SavedDestination(
+                  key: const ValueKey('saved-page'),
+                  bottomInset: inset,
+                  active: index == 3,
+                ),
+              ),
+              _observed(
+                4,
+                ProfileDestination(bottomInset: inset, active: index == 4),
+              ),
             ],
           ),
           PositionedDirectional(
@@ -247,6 +342,7 @@ class _GalleryShell extends StatelessWidget {
                     onPressed: () => showAppearanceSheet(
                       context: context,
                       controls: readControls,
+                      collapse: collapse,
                       onChanged: onApply,
                     ),
                     color: colors.ink,
@@ -269,6 +365,8 @@ class _GalleryShell extends StatelessWidget {
               motion: controls.motion.value,
               hapticsEnabled: controls.haptics,
               enableDragSelection: controls.dragSelection,
+              enableCollapse: controls.scrollCollapse,
+              collapseController: collapse,
               items: items,
               style: LiquidGlassNavigationStyle(
                 blurSigma: controls.blur,
@@ -296,6 +394,13 @@ class _GalleryShell extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  Widget _observed(int page, Widget child) {
+    if (!controls.scrollCollapse || index != page) {
+      return child;
+    }
+    return LiquidGlassScrollObserver(controller: collapse, child: child);
   }
 
   double _bottomInset(BuildContext context) {

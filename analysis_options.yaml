@@ -9,6 +9,10 @@ analyzer:
     - windows/**
     - macos/**
     - linux/**
+  errors:
+    # Flutter 3.50 deprecates package:flutter/material.dart. This package
+    # still supports the 3.47 SDK used by CI, where that import is current.
+    deprecated_member_use: ignore
 
 # Additional information about this file can be found at
 # https://dart.dev/guides/language/analysis-options

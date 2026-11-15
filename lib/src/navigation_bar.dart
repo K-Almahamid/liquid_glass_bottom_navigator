@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/physics.dart';
 import 'package:flutter/services.dart';
 
+import 'collapse_controller.dart';
+import 'collapse_frame.dart';
 import 'glass_surface.dart';
 import 'indicator_geometry.dart';
 import 'item.dart';
@@ -39,6 +41,16 @@ import 'theme.dart';
 /// [LiquidGlassNavigationStyle.respectSafeArea] defaults to true and adds the
 /// bottom view padding to the bar margin. Set it to false when the parent
 /// already positions the bar inside the safe area.
+///
+/// [enableCollapse] defaults to false. The bar then keeps the expanded layout
+/// and ignores [collapseController], even when that controller's target is
+/// collapsed. The controller value is left unchanged. Turning collapse on
+/// adopts the controller's current target.
+///
+/// A collapse request during a destination drag waits until that drag
+/// finishes or is cancelled, then animates from the current geometry. The
+/// compact button does not drag between destinations. Tapping it expands the
+/// bar and does not call [onIndexChanged].
 class LiquidGlassNavigationBar extends StatefulWidget {
   /// Creates a liquid-glass navigation bar.
   const LiquidGlassNavigationBar({
@@ -53,6 +65,8 @@ class LiquidGlassNavigationBar extends StatefulWidget {
     this.hapticsEnabled = true,
     this.haptic = LiquidGlassHaptic.selection,
     this.enableDragSelection = false,
+    this.enableCollapse = false,
+    this.collapseController,
     this.semanticsLabel,
     super.key,
   });
@@ -107,6 +121,27 @@ class LiquidGlassNavigationBar extends StatefulWidget {
   /// a preview: [currentIndex] remains the parent's value.
   final bool enableDragSelection;
 
+  /// Whether the bar can shrink into the compact selected-destination button.
+  ///
+  /// Defaults to false, which is the expanded 1.1.0 bar. When false, a
+  /// [collapseController] is not listened to and the bar stays expanded.
+  /// When true, a null [collapseController] uses a controller owned by this
+  /// state so a tap on the compact button can expand it. Scroll-driven
+  /// collapse needs a controller the page can share with
+  /// [LiquidGlassScrollObserver].
+  final bool enableCollapse;
+
+  /// Target expanded or collapsed state.
+  ///
+  /// The caller owns this object. This widget never disposes it. Replace it
+  /// in the parent and the bar detaches the previous listener. Dispose the
+  /// old controller after that rebuild. The animation stays on this widget.
+  ///
+  /// Null while [enableCollapse] is true creates an internal controller that
+  /// starts expanded. Null while [enableCollapse] is false leaves the bar
+  /// expanded.
+  final LiquidGlassCollapseController? collapseController;
+
   /// Spoken name for the bar itself.
   ///
   /// Item names stay on each destination. This label names the tab bar and
@@ -119,8 +154,12 @@ class LiquidGlassNavigationBar extends StatefulWidget {
 }
 
 class _LiquidGlassNavigationBarState extends State<LiquidGlassNavigationBar>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late final AnimationController _controller;
+  AnimationController? _collapse;
+  LiquidGlassCollapseController? _owned;
+  LiquidGlassCollapseController? _listening;
+  bool _collapseBound = false;
   final GlobalKey _layoutKey = GlobalKey();
   bool _reduceMotion = false;
   bool _disposed = false;
@@ -177,6 +216,7 @@ class _LiquidGlassNavigationBarState extends State<LiquidGlassNavigationBar>
   void initState() {
     super.initState();
     _controller = AnimationController(vsync: this, value: 1);
+    _syncCollapseOwner(jump: true);
   }
 
   @override
@@ -193,6 +233,7 @@ class _LiquidGlassNavigationBarState extends State<LiquidGlassNavigationBar>
       _controller.stop();
       _controller.value = 1;
       _render?.snap();
+      _jumpCollapse(_collapseTarget);
     } else if (directionChanged) {
       // The render object drops the drag preview when direction changes.
       _endDragTracking();
@@ -203,6 +244,12 @@ class _LiquidGlassNavigationBarState extends State<LiquidGlassNavigationBar>
   void didUpdateWidget(LiquidGlassNavigationBar oldWidget) {
     super.didUpdateWidget(oldWidget);
     _reduceMotion = _resolveReducedMotion();
+    final collapseChanged =
+        widget.enableCollapse != oldWidget.enableCollapse ||
+        !identical(widget.collapseController, oldWidget.collapseController);
+    if (collapseChanged) {
+      _syncCollapseOwner(jump: false);
+    }
     final itemsChanged = widget.items.length != oldWidget.items.length;
     final indexChanged = widget.currentIndex != oldWidget.currentIndex;
     final dragDisabled =
@@ -211,6 +258,7 @@ class _LiquidGlassNavigationBarState extends State<LiquidGlassNavigationBar>
       if (dragDisabled && _dragging) {
         _endDragTracking();
         _settleToAuthority();
+        _syncCollapseMotion();
       }
       return;
     }
@@ -350,6 +398,7 @@ class _LiquidGlassNavigationBarState extends State<LiquidGlassNavigationBar>
     _endDragTracking();
     if (wasDragging) {
       _settleToAuthority();
+      _syncCollapseMotion();
     }
   }
 
@@ -410,6 +459,7 @@ class _LiquidGlassNavigationBarState extends State<LiquidGlassNavigationBar>
     _flow = 0;
     if (render == null || !render.attached) {
       _claimedIndex = null;
+      _syncCollapseMotion();
       return;
     }
     final index = liquidSlotAt(render.debugItemRects, local);
@@ -423,6 +473,7 @@ class _LiquidGlassNavigationBarState extends State<LiquidGlassNavigationBar>
     if (!eligible) {
       _claimedIndex = null;
       _settleToAuthority();
+      _syncCollapseMotion();
       return;
     }
     _claimedIndex = index;
@@ -430,6 +481,7 @@ class _LiquidGlassNavigationBarState extends State<LiquidGlassNavigationBar>
       _playHaptic();
     }
     callback(index);
+    _syncCollapseMotion();
     if (_claimedIndex != index || !mounted) {
       return;
     }
@@ -462,6 +514,10 @@ class _LiquidGlassNavigationBarState extends State<LiquidGlassNavigationBar>
   }
 
   void _handleTap(int index) {
+    if (_blocksSelection) {
+      _expandFromTap();
+      return;
+    }
     if (index < 0 || index >= widget.items.length) {
       return;
     }
@@ -493,12 +549,167 @@ class _LiquidGlassNavigationBarState extends State<LiquidGlassNavigationBar>
   void dispose() {
     // Children unmount before State.dispose. The row removes its animation
     // listener while this controller is still alive. This method then releases
-    // the one ticker this state owns.
+    // the tickers this state owns. A caller-owned collapse controller is
+    // detached and left alive.
     _disposed = true;
     _endDragTracking();
     _controller.stop();
     _controller.dispose();
+    _detachCollapse();
+    _collapse?.removeListener(_onCollapseTick);
+    _collapse?.dispose();
+    _owned?.dispose();
+    _owned = null;
     super.dispose();
+  }
+
+  double get _collapseValue => _collapse?.value ?? 0;
+
+  double get _collapseTarget {
+    if (!widget.enableCollapse || _listening == null) {
+      return 0;
+    }
+    return _listening!.isCollapsed ? 1 : 0;
+  }
+
+  bool get _blocksSelection {
+    return widget.enableCollapse &&
+        (_collapseValue > 0 || (_listening?.isCollapsed ?? false));
+  }
+
+  void _syncCollapseOwner({required bool jump}) {
+    if (!widget.enableCollapse) {
+      _detachCollapse();
+      _disposeOwned();
+      _releaseCollapseTicker();
+      _jumpCollapse(0);
+      return;
+    }
+    _collapse ??= AnimationController(vsync: this, value: 0);
+    final external = widget.collapseController;
+    if (external == null) {
+      _owned ??= LiquidGlassCollapseController(
+        collapsed: (_collapse?.value ?? 0) >= 0.5,
+      );
+    } else {
+      _disposeOwned();
+    }
+    final next = external ?? _owned;
+    if (!identical(next, _listening)) {
+      _detachCollapse();
+      _listening = next;
+      _listening?.addListener(_onCollapseRequest);
+    }
+    if (jump || !_collapseBound) {
+      _jumpCollapse(_collapseTarget);
+      _collapseBound = true;
+      _collapse?.addListener(_onCollapseTick);
+      return;
+    }
+    _syncCollapseMotion();
+  }
+
+  void _detachCollapse() {
+    _listening?.removeListener(_onCollapseRequest);
+    _listening = null;
+  }
+
+  void _disposeOwned() {
+    _owned?.dispose();
+    _owned = null;
+  }
+
+  void _releaseCollapseTicker() {
+    _collapse?.removeListener(_onCollapseTick);
+    _collapse?.dispose();
+    _collapse = null;
+    _collapseBound = false;
+  }
+
+  void _onCollapseTick() {
+    if (!_disposed && mounted) {
+      setState(() {});
+    }
+  }
+
+  void _onCollapseRequest() {
+    if (_disposed || !mounted) {
+      return;
+    }
+    if (_dragging) {
+      return;
+    }
+    if (_collapseTarget == 1) {
+      _dropBarFocus();
+    }
+    _syncCollapseMotion();
+  }
+
+  void _syncCollapseMotion() {
+    if (_disposed || !mounted) {
+      return;
+    }
+    if (_dragging) {
+      return;
+    }
+    if (!widget.enableCollapse || _collapse == null) {
+      _jumpCollapse(0);
+      return;
+    }
+    final target = _collapseTarget;
+    if (_reduceMotion || !widget.motion.enabled) {
+      _jumpCollapse(target);
+      return;
+    }
+    final current = _collapse!.value;
+    if ((current - target).abs() < 0.001 && !_collapse!.isAnimating) {
+      return;
+    }
+    _collapse!.stop();
+    _collapse!.animateWith(
+      SpringSimulation(
+        widget.motion.spring,
+        current,
+        target,
+        0,
+        snapToEnd: true,
+      ),
+    );
+  }
+
+  void _jumpCollapse(double target) {
+    final collapse = _collapse;
+    if (collapse == null) {
+      return;
+    }
+    collapse.stop();
+    if (collapse.value != target) {
+      collapse.value = target;
+    }
+  }
+
+  void _expandFromTap() {
+    _listening?.expand();
+  }
+
+  void _dropBarFocus() {
+    final node = FocusManager.instance.primaryFocus;
+    final host = _layoutKey.currentContext;
+    final focused = node?.context;
+    if (node == null || host is! Element || focused is! Element) {
+      return;
+    }
+    var inside = false;
+    focused.visitAncestorElements((Element ancestor) {
+      if (ancestor == host) {
+        inside = true;
+        return false;
+      }
+      return true;
+    });
+    if (inside) {
+      node.unfocus();
+    }
   }
 
   @override
@@ -537,6 +748,8 @@ class _LiquidGlassNavigationBarState extends State<LiquidGlassNavigationBar>
         widget.labelMode == LiquidGlassLabelMode.always && anyLabel;
     final matchLabeledCapsule =
         widget.labelMode == LiquidGlassLabelMode.hidden && anyLabel;
+    final progress = widget.enableCollapse ? _collapseValue : 0.0;
+    final labelOpacity = progress <= 0 ? 1.0 : (1 - progress).clamp(0.0, 1.0);
     final layoutChild = LiquidNavigationLayout(
       key: _layoutKey,
       targetIndex: _effectiveIndex,
@@ -556,25 +769,23 @@ class _LiquidGlassNavigationBarState extends State<LiquidGlassNavigationBar>
       morphIntensity: widget.motion.morphIntensity,
       children: <Widget>[
         for (var i = 0; i < widget.items.length; i++)
-          LiquidNavigationItemView(
-            key: ValueKey<int>(i),
-            item: widget.items[i],
+          _collapseItem(
             index: i,
-            count: widget.items.length,
-            selected: i == _effectiveIndex,
-            labelMode: widget.labelMode,
+            progress: progress,
+            labelOpacity: labelOpacity,
             reserveLabelLine: reserveLabelLine,
             matchLabeledCapsule: matchLabeledCapsule,
-            labelAnimation: _controller,
-            labelFrom: _labelFrom,
-            labelTo: _effectiveIndex,
             style: style,
             theme: theme,
-            onTap: () => _handleTap(i),
           ),
       ],
     );
-    final layout = widget.enableDragSelection
+    final trackDrag =
+        widget.enableDragSelection &&
+        (_pointer != null ||
+            _dragging ||
+            (progress == 0 && !(_listening?.isCollapsed ?? false)));
+    final layout = trackDrag
         ? Listener(
             behavior: HitTestBehavior.deferToChild,
             onPointerDown: _onPointerDown,
@@ -585,35 +796,111 @@ class _LiquidGlassNavigationBarState extends State<LiquidGlassNavigationBar>
           )
         : layoutChild;
 
-    final glass = GlassSurface(
-      style: style,
-      theme: theme,
-      borderRadius: radius,
-      child: Padding(padding: padding, child: layout),
-    );
-
-    final constrained = ConstrainedBox(
+    final row = Padding(padding: padding, child: layout);
+    final widthBox = ConstrainedBox(
       constraints: BoxConstraints(
         minWidth: style.minWidth ?? 0,
         maxWidth: style.maxWidth ?? double.infinity,
       ),
-      child: width == null ? glass : SizedBox(width: width, child: glass),
+      child: width == null ? row : SizedBox(width: width, child: row),
     );
-
-    return Semantics(
-      role: widget.items.isEmpty ? SemanticsRole.none : SemanticsRole.tabBar,
-      label: widget.semanticsLabel,
-      container: true,
-      explicitChildNodes: true,
-      child: Padding(
-        padding: resolvedMargin,
-        child: Align(
-          alignment: Alignment.bottomCenter,
-          heightFactor: 1,
-          child: constrained,
-        ),
+    // Collapse stays off this branch so the approved glass tree is unchanged.
+    final Widget glass = widget.enableCollapse
+        ? CollapseFrame(
+            progress: progress,
+            selectedIndex: _effectiveIndex,
+            style: style,
+            theme: theme,
+            borderRadius: BorderRadius.lerp(
+              radius,
+              BorderRadius.circular(style.minTouchTarget),
+              progress,
+            )!,
+            child: RepaintBoundary(child: widthBox),
+          )
+        : GlassSurface(
+            style: style,
+            theme: theme,
+            borderRadius: radius,
+            child: widthBox,
+          );
+    final positioned = progress <= 0
+        ? glass
+        : GestureDetector(
+            behavior: HitTestBehavior.translucent,
+            excludeFromSemantics: true,
+            onTap: _expandFromTap,
+            child: glass,
+          );
+    final alignmentX = direction == TextDirection.rtl ? -progress : progress;
+    final bar = Padding(
+      padding: resolvedMargin,
+      child: Align(
+        alignment: Alignment(alignmentX, 1),
+        heightFactor: 1,
+        child: positioned,
       ),
     );
+    if (!widget.enableCollapse || progress < 0.5) {
+      return Semantics(
+        role: widget.items.isEmpty ? SemanticsRole.none : SemanticsRole.tabBar,
+        label: widget.semanticsLabel,
+        container: true,
+        explicitChildNodes: true,
+        child: bar,
+      );
+    }
+    return Semantics(
+      button: true,
+      label: _collapsedSemanticsLabel(),
+      hint: 'Expand navigation',
+      onTap: _expandFromTap,
+      container: true,
+      child: ExcludeSemantics(child: bar),
+    );
+  }
+
+  Widget _collapseItem({
+    required int index,
+    required double progress,
+    required double labelOpacity,
+    required bool reserveLabelLine,
+    required bool matchLabeledCapsule,
+    required LiquidGlassNavigationStyle style,
+    required LiquidGlassNavigationTheme theme,
+  }) {
+    final selected = index == _effectiveIndex;
+    Widget item = LiquidNavigationItemView(
+      key: ValueKey<int>(index),
+      item: widget.items[index],
+      index: index,
+      count: widget.items.length,
+      selected: selected,
+      labelMode: widget.labelMode,
+      reserveLabelLine: reserveLabelLine,
+      matchLabeledCapsule: matchLabeledCapsule,
+      labelAnimation: _controller,
+      labelFrom: _labelFrom,
+      labelTo: _effectiveIndex,
+      style: style,
+      theme: theme,
+      onTap: () => _handleTap(index),
+      labelOpacity: labelOpacity,
+    );
+    if (widget.enableCollapse && progress > 0 && !selected) {
+      item = IgnorePointer(
+        child: Opacity(opacity: labelOpacity, child: item),
+      );
+    }
+    return item;
+  }
+
+  String _collapsedSemanticsLabel() {
+    final index = _effectiveIndex;
+    if (index == null) {
+      return widget.semanticsLabel ?? 'Navigation';
+    }
+    return liquidGlassItemSemantics(widget.items[index], index);
   }
 }
 

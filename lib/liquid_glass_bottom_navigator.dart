@@ -6,9 +6,11 @@
 library;
 
 export 'src/badge.dart';
+export 'src/collapse_controller.dart';
 export 'src/item.dart' show LiquidGlassNavigationItem;
 export 'src/motion.dart';
 export 'src/options.dart';
+export 'src/scroll_observer.dart';
 export 'src/style.dart';
 export 'src/theme.dart';
 export 'src/navigation_bar.dart' show LiquidGlassNavigationBar;

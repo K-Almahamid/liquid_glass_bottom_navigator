@@ -82,7 +82,7 @@ class GlassSurface extends StatelessWidget {
           Positioned.fill(
             child: IgnorePointer(
               child: CustomPaint(
-                painter: _GlassRimPainter(
+                painter: GlassRimPainter(
                   borderRadius: borderRadius,
                   color: theme.borderColor,
                   width: style.borderWidth,
@@ -96,8 +96,9 @@ class GlassSurface extends StatelessWidget {
 }
 
 /// One stroke whose highlight sits on the top edge and fades toward the bottom.
-class _GlassRimPainter extends CustomPainter {
-  const _GlassRimPainter({
+class GlassRimPainter extends CustomPainter {
+  /// Creates the glass rim stroke.
+  const GlassRimPainter({
     required this.borderRadius,
     required this.color,
     required this.width,
@@ -140,7 +141,7 @@ class _GlassRimPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_GlassRimPainter oldDelegate) {
+  bool shouldRepaint(GlassRimPainter oldDelegate) {
     return oldDelegate.borderRadius != borderRadius ||
         oldDelegate.color != color ||
         oldDelegate.width != width;

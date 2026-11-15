@@ -1,3 +1,11 @@
+## 1.2.0
+
+* Adds optional scroll-aware collapse. `enableCollapse` defaults to false, so 1.1.0 bars stay expanded.
+* `LiquidGlassCollapseController` holds the expanded or collapsed target. `collapse`, `expand`, and `toggle` do not notify when the target is already current. The bar owns the animation. It does not dispose a controller the caller passed in.
+* `LiquidGlassScrollObserver` collapses on downward user scrolling and expands on upward scrolling, after 48 logical pixels in one direction. It ignores horizontal lists, nested scrollables at depth greater than 0, and programmatic `jumpTo` or `animateTo`. It does not consume scroll notifications.
+* The glass shrinks toward the trailing edge into a compact button showing the selected icon. Tapping that button expands the bar and does not call `onIndexChanged` or play haptics. A collapse requested during a destination drag waits until the drag ends. The compact button does not drag between destinations.
+* While `enableCollapse` is false, a controller whose target is collapsed is ignored and the bar stays expanded.
+
 ## 1.1.0
 
 * Adds `enableDragSelection`. It defaults to false, so 1.0.0 callers stay tap-only.

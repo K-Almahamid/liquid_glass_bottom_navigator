@@ -27,6 +27,7 @@ class LiquidNavigationItemView extends StatelessWidget {
     required this.style,
     required this.theme,
     required this.onTap,
+    this.labelOpacity = 1,
     super.key,
   });
 
@@ -73,6 +74,10 @@ class LiquidNavigationItemView extends StatelessWidget {
 
   /// Selection handler.
   final VoidCallback onTap;
+
+  /// Opacity of a visible label. 1 keeps the approved label. Lower values
+  /// fade it during collapse without changing the label's layout size.
+  final double labelOpacity;
 
   @override
   Widget build(BuildContext context) {
@@ -185,7 +190,7 @@ class LiquidNavigationItemView extends StatelessWidget {
                       label == null || labelMode == LiquidGlassLabelMode.hidden
                       ? null
                       : Opacity(
-                          opacity: showLabelText ? 1 : 0,
+                          opacity: showLabelText ? labelOpacity : 0,
                           child: Text(
                             label,
                             maxLines: 1,
@@ -209,13 +214,24 @@ class LiquidNavigationItemView extends StatelessWidget {
                       SizedBox(height: style.labelSpacing),
                       SizedBox(
                         height: labelHeight,
-                        child: Text(
-                          label,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          textAlign: TextAlign.center,
-                          style: _labelStyle(foreground),
-                        ),
+                        child: labelOpacity < 1
+                            ? Opacity(
+                                opacity: labelOpacity,
+                                child: Text(
+                                  label,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  textAlign: TextAlign.center,
+                                  style: _labelStyle(foreground),
+                                ),
+                              )
+                            : Text(
+                                label,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                textAlign: TextAlign.center,
+                                style: _labelStyle(foreground),
+                              ),
                       ),
                     ],
                   ),

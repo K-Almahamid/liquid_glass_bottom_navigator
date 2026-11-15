@@ -26,7 +26,7 @@ Requires Flutter `>=3.47.0` and Dart `^3.13.4`. The spring uses `SpringDescripti
 
 ```yaml
 dependencies:
-  liquid_glass_bottom_navigator: ^1.1.0
+  liquid_glass_bottom_navigator: ^1.2.0
 ```
 
 A local checkout can still use a path dependency:
@@ -85,6 +85,35 @@ The drag starts only on the selected slot, after the touch slop, so a tap still 
 An empty `items` list draws the glass surface with no destinations. An index outside `0 .. items.length - 1` selects nothing; taps on real items still report a new index. An invalid index does not throw. Changing the number of items snaps the indicator onto `currentIndex`. A reorder that keeps the same length does not replay motion unless the index changes.
 
 `respectSafeArea` defaults to true and adds the bottom view padding to the margin. Set it to false when the parent already places the bar inside the safe area. `semanticsLabel` names the tab bar. It does not replace item names.
+
+## Scroll collapse
+
+Collapse is off unless `enableCollapse` is true. The default bar is the expanded 1.1.0 layout.
+
+```dart
+final collapse = LiquidGlassCollapseController();
+
+LiquidGlassScrollObserver(
+  controller: collapse,
+  child: ListView(
+    children: const [/* page content */],
+  ),
+)
+
+LiquidGlassNavigationBar(
+  enableCollapse: true,
+  collapseController: collapse,
+  currentIndex: index,
+  onIndexChanged: (value) => setState(() => index = value),
+  items: items,
+)
+```
+
+Scrolling down asks the controller to collapse. Scrolling up, or reaching the top, asks it to expand. The bar animates between the full glass row and a compact trailing button that shows the selected icon. Tapping that button expands the bar. It does not change `currentIndex`, call `onIndexChanged`, or play selection haptics.
+
+You own `LiquidGlassCollapseController`. The bar listens to it and does not dispose it. Dispose the controller after the bar is gone, or clear `collapseController` first. `collapse`, `expand`, and `toggle` are silent when the target is already current. Pass one controller to every scroll view that should drive the same bar. The default observer listens to the vertical scrollable it wraps, not to a nested horizontal list. Wrap a nested vertical list itself, or pass `notificationPredicate`, when that list should drive the bar.
+
+With `enableCollapse` false, the bar stays expanded even if the controller's target is collapsed. A collapse request during a destination drag waits until the drag ends. The compact button does not start a destination drag. Reduced motion jumps to the target shape.
 
 ## Items
 
@@ -215,6 +244,6 @@ Replace `macos` with the physical iPhone device id for that follow-up. See `exam
 
 ## Versioning
 
-Version `1.1.0` adds opt-in drag selection and stays compatible with `1.0.0`. The license is BSD 3-Clause. See [LICENSE](LICENSE). Issues: https://github.com/K-Almahamid/liquid_glass_bottom_navigator/issues.
+Version `1.2.0` adds optional scroll collapse and stays compatible with `1.1.0` when `enableCollapse` is left false. The license is BSD 3-Clause. See [LICENSE](LICENSE). Issues: https://github.com/K-Almahamid/liquid_glass_bottom_navigator/issues.
 
 Source: https://github.com/K-Almahamid/liquid_glass_bottom_navigator

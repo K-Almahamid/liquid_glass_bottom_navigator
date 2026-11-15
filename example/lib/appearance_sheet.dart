@@ -12,6 +12,7 @@ import 'gallery_widgets.dart';
 Future<void> showAppearanceSheet({
   required BuildContext context,
   required ExampleControls Function() controls,
+  required LiquidGlassCollapseController collapse,
   required ValueChanged<ExampleControls> onChanged,
 }) {
   return showModalBottomSheet<void>(
@@ -36,6 +37,7 @@ Future<void> showAppearanceSheet({
                     : TextDirection.ltr,
                 child: AppearanceSheet(
                   controls: current,
+                  collapse: collapse,
                   onChanged: (next) {
                     onChanged(next);
                     setSheet(() {});
@@ -56,6 +58,7 @@ class AppearanceSheet extends StatelessWidget {
   /// Creates the sheet body.
   const AppearanceSheet({
     required this.controls,
+    required this.collapse,
     required this.onChanged,
     required this.onClose,
     super.key,
@@ -63,6 +66,9 @@ class AppearanceSheet extends StatelessWidget {
 
   /// Current values.
   final ExampleControls controls;
+
+  /// Shared with the active page so the sheet can preview collapse.
+  final LiquidGlassCollapseController collapse;
 
   /// Applies a new value and refreshes the sheet.
   final ValueChanged<ExampleControls> onChanged;
@@ -176,6 +182,25 @@ class AppearanceSheet extends StatelessWidget {
                       value: controls.dragSelection,
                       onChanged: (value) =>
                           onChanged(controls.copyWith(dragSelection: value)),
+                    ),
+                    GallerySettingRow(
+                      title: 'Scroll collapse',
+                      value: controls.scrollCollapse,
+                      onChanged: (value) =>
+                          onChanged(controls.copyWith(scrollCollapse: value)),
+                    ),
+                    GallerySettingRow(
+                      title: 'Collapsed',
+                      value: collapse.isCollapsed,
+                      onChanged: (value) {
+                        if (value) {
+                          collapse.collapse();
+                          onChanged(controls.copyWith(scrollCollapse: true));
+                        } else {
+                          collapse.expand();
+                          onChanged(controls);
+                        }
+                      },
                     ),
                     GallerySettingRow(
                       title: 'Haptics',

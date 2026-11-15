@@ -59,6 +59,7 @@ class ExampleControls {
     this.equalSlots = true,
     this.respectSafeArea = true,
     this.dragSelection = true,
+    this.scrollCollapse = false,
   });
 
   /// Light, dark, or the platform setting.
@@ -118,6 +119,9 @@ class ExampleControls {
   /// Horizontal drag from the selected destination.
   final bool dragSelection;
 
+  /// Whether the active page can collapse the bar while scrolling.
+  final bool scrollCollapse;
+
   /// Returns a copy with the given fields replaced.
   ExampleControls copyWith({
     ThemeMode? themeMode,
@@ -139,6 +143,7 @@ class ExampleControls {
     bool? equalSlots,
     bool? respectSafeArea,
     bool? dragSelection,
+    bool? scrollCollapse,
   }) {
     return ExampleControls(
       themeMode: themeMode ?? this.themeMode,
@@ -160,6 +165,7 @@ class ExampleControls {
       equalSlots: equalSlots ?? this.equalSlots,
       respectSafeArea: respectSafeArea ?? this.respectSafeArea,
       dragSelection: dragSelection ?? this.dragSelection,
+      scrollCollapse: scrollCollapse ?? this.scrollCollapse,
     );
   }
 }

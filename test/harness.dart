@@ -36,12 +36,15 @@ Future<void> pumpNavigationBar(
   bool hapticsEnabled = true,
   LiquidGlassHaptic haptic = LiquidGlassHaptic.selection,
   bool enableDragSelection = false,
+  bool enableCollapse = false,
+  LiquidGlassCollapseController? collapseController,
   String? semanticsLabel,
   Size surface = const Size(360, 240),
   TextDirection textDirection = TextDirection.ltr,
   bool disableAnimations = false,
   ThemeData? themeData,
   double textScale = 1,
+  EdgeInsets padding = EdgeInsets.zero,
 }) {
   return tester.pumpWidget(
     MaterialApp(
@@ -53,6 +56,7 @@ Future<void> pumpNavigationBar(
       home: MediaQuery(
         data: MediaQueryData(
           size: surface,
+          padding: padding,
           disableAnimations: disableAnimations,
           textScaler: TextScaler.linear(textScale),
         ),
@@ -75,6 +79,8 @@ Future<void> pumpNavigationBar(
                   hapticsEnabled: hapticsEnabled,
                   haptic: haptic,
                   enableDragSelection: enableDragSelection,
+                  enableCollapse: enableCollapse,
+                  collapseController: collapseController,
                   semanticsLabel: semanticsLabel,
                 ),
               ),
