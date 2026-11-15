@@ -67,36 +67,36 @@ void main() {
   float clear = step(0.5, u_variant);
   float edge = clamp(u_edge, 0.0, 1.0);
   float refraction = clamp(u_refraction, 0.0, 1.0);
-  // Narrow band. The shift stays a few pixels so the map does not fold.
-  float band = mix(short_side * 0.07, short_side * 0.16, edge);
+  // The bend peaks inside the rim and returns to zero on the contour, so
+  // the sample does not stick to the border texel. One image, no second copy.
+  float band = mix(short_side * 0.16, short_side * 0.32, edge);
   float edge_weight = smoothstep(-band, -1.0, dist);
-  float shift = edge_weight * refraction * mix(3.5, 6.5, edge) * mix(1.0, 1.2, clear);
+  float depth = clamp(-dist / max(band, 1.0), 0.0, 1.0);
+  float lens = sin(depth * 3.14159265);
+  float shift = lens * refraction * mix(12.0, 22.0, edge) * mix(1.0, 1.28, clear);
+  shift = min(shift, max(-dist - 1.5, 0.0));
   vec2 limit = u_size - vec2(1.0);
   vec2 bent_px = clamp(pixel + normal * shift, vec2(1.0), limit);
 
-  // Five taps on the same displaced point. A 3px radius softens a stroke
-  // without placing a second copy of the word.
-  float radius = mix(3.2, 1.6, clear);
+  // Five taps on the same point. Wide enough to soften a line of type,
+  // close enough that the taps cannot form a second copy of a word.
+  float radius = mix(8.5, 3.8, clear);
   vec3 bent = texture(u_texture, sample_uv(bent_px)).rgb;
-  vec3 soft = bent * 0.44;
-  soft += texture(u_texture, sample_uv(bent_px + vec2(radius, 0.0))).rgb * 0.14;
-  soft += texture(u_texture, sample_uv(bent_px + vec2(-radius, 0.0))).rgb * 0.14;
-  soft += texture(u_texture, sample_uv(bent_px + vec2(0.0, radius))).rgb * 0.14;
-  soft += texture(u_texture, sample_uv(bent_px + vec2(0.0, -radius))).rgb * 0.14;
+  vec3 soft = bent * 0.36;
+  soft += texture(u_texture, sample_uv(bent_px + vec2(radius, 0.0))).rgb * 0.16;
+  soft += texture(u_texture, sample_uv(bent_px + vec2(-radius, 0.0))).rgb * 0.16;
+  soft += texture(u_texture, sample_uv(bent_px + vec2(0.0, radius))).rgb * 0.16;
+  soft += texture(u_texture, sample_uv(bent_px + vec2(0.0, -radius))).rgb * 0.16;
 
-  float interior = 1.0 - smoothstep(0.0, 0.85, edge_weight);
-  vec3 encoded = mix(bent, soft, interior * mix(0.82, 0.38, clear));
+  float interior = 1.0 - smoothstep(0.2, 0.92, edge_weight);
+  vec3 encoded = mix(bent, soft, interior * mix(0.72, 0.32, clear));
 
-  vec3 color = encoded;
-  float veil = mix(0.24, 0.08, clear);
+  // Keep the sampled color. A luminance veil is what turned the bar gray.
+  float tint_mix = u_tint.a * mix(0.18, 0.05, clear);
   if (u_adaptive < 0.5) {
-    color = mix(encoded, u_tint.rgb, u_tint.a * mix(0.34, 0.12, clear));
-  } else {
-    float luma = dot(encoded, vec3(0.2126, 0.7152, 0.0722));
-    vec3 haze = mix(vec3(0.93), vec3(0.14), smoothstep(0.15, 0.85, luma));
-    color = mix(encoded, haze, veil);
-    color = mix(color, u_tint.rgb, u_tint.a * mix(0.30, 0.08, clear));
+    tint_mix = u_tint.a * mix(0.24, 0.08, clear);
   }
+  vec3 color = mix(encoded, u_tint.rgb, tint_mix);
 
   vec2 light = u_light;
   if (length(light) > 0.001) {
@@ -105,10 +105,10 @@ void main() {
     light = vec2(-0.15, -1.0);
   }
   float incidence = clamp(dot(normal, light), 0.0, 1.0);
-  float fresnel = pow(max(edge_weight, 0.0), 1.8);
+  float fresnel = pow(max(edge_weight, 0.0), 1.55);
   float highlight = clamp(u_highlight, 0.0, 1.0);
-  float spec = pow(incidence, 28.0) * fresnel * highlight * mix(0.16, 0.08, clear);
-  spec += clamp(normal.y, 0.0, 1.0) * fresnel * highlight * 0.04;
+  float spec = pow(incidence, 22.0) * fresnel * highlight * mix(0.34, 0.16, clear);
+  spec += clamp(normal.y, 0.0, 1.0) * fresnel * highlight * mix(0.12, 0.06, clear);
   color = clamp(color + vec3(spec), 0.0, 1.0);
   frag_color = vec4(color, 1.0);
 }

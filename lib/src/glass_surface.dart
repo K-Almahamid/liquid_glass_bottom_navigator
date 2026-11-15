@@ -184,9 +184,9 @@ Color glassFillTint(
     alpha *= 0.82;
   }
   if (shaderActive) {
-    // The shader already diffuses the interior. Regular keeps a stronger
-    // wash so body text does not stay readable. Clear stays lighter.
-    alpha *= material.variant == LiquidGlassMaterialVariant.clear ? 0.14 : 0.62;
+    // The shader already carries the page color. This wash only separates
+    // the glass. A stronger wash turns the bar gray.
+    alpha *= material.variant == LiquidGlassMaterialVariant.clear ? 0.05 : 0.42;
   }
   if (highContrast) {
     alpha = math.max(alpha, 0.9);

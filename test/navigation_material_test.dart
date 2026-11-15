@@ -169,7 +169,9 @@ void main() {
     final source = File('shaders/liquid_glass_refraction.frag')
         .readAsStringSync();
     expect(source.contains('u_inset'), isFalse);
-    expect(source.contains('22.0'), isFalse);
+    expect(source.contains('fold_px'), isFalse);
+    expect(source.contains('pulled_px'), isFalse);
+    expect(source.contains('vec3(0.93)'), isFalse);
   });
 
   test('edge normals point out of the rounded glass', () {
