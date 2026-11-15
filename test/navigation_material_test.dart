@@ -22,9 +22,12 @@ void main() {
       LiquidGlassMaterial.refractive.variant,
       LiquidGlassMaterialVariant.regular,
     );
-    expect(LiquidGlassMaterial.refractive.refractionStrength, 0.48);
-    expect(LiquidGlassMaterial.refractive.edgeThickness, 0.46);
-    expect(LiquidGlassMaterial.refractive.highlightIntensity, 0.32);
+    expect(LiquidGlassMaterial.refractive.refractionStrength, 0.58);
+    expect(LiquidGlassMaterial.refractive.edgeThickness, 0.52);
+    expect(LiquidGlassMaterial.refractive.highlightIntensity, 0.36);
+    expect(refractiveSoftenSigma(0), 0);
+    expect(refractiveSoftenSigma(18), lessThan(1.21));
+    expect(refractiveSoftenSigma(18), greaterThan(1));
     expect(LiquidGlassMaterial.refractive, isNot(LiquidGlassMaterial.classic));
     expect(
       () => LiquidGlassMaterial(refractionStrength: 2),

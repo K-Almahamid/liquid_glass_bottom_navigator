@@ -83,9 +83,9 @@ class ExampleControls {
     this.scrollCollapse = true,
     this.glassMode = LiquidGlassRenderMode.refractive,
     this.glassVariant = LiquidGlassMaterialVariant.regular,
-    this.refractionStrength = 0.48,
-    this.edgeThickness = 0.46,
-    this.highlightIntensity = 0.32,
+    this.refractionStrength = 0.58,
+    this.edgeThickness = 0.52,
+    this.highlightIntensity = 0.36,
     this.adaptiveTint = true,
     this.backdrop = GalleryBackdrop.page,
   });

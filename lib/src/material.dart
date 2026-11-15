@@ -73,9 +73,9 @@ class LiquidGlassMaterial {
   static const LiquidGlassMaterial refractive = LiquidGlassMaterial(
     mode: LiquidGlassRenderMode.refractive,
     variant: LiquidGlassMaterialVariant.regular,
-    refractionStrength: 0.48,
-    edgeThickness: 0.46,
-    highlightIntensity: 0.32,
+    refractionStrength: 0.58,
+    edgeThickness: 0.52,
+    highlightIntensity: 0.36,
   );
 
   /// Backdrop blur, or the refractive shader when the backend allows it.
@@ -87,8 +87,9 @@ class LiquidGlassMaterial {
   /// How far edge samples move, from 0 to 1.
   ///
   /// Used by [LiquidGlassRenderMode.refractive]. The center of the glass
-  /// stays nearly still. 0 disables the shift. A value near 0.5 is enough
-  /// to see the rim on a patterned backdrop.
+  /// stays nearly still. 0 disables the shift. Samples move outward along
+  /// the rim and stay inside the clipped backdrop. The full blur sigma is
+  /// not applied before that sample.
   final double refractionStrength;
 
   /// How wide the curved edge band is, from 0 to 1.

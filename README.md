@@ -97,11 +97,11 @@ LiquidGlassNavigationBar(
 )
 ```
 
-`LiquidGlassMaterial.refractive` uses the regular variant with refraction 0.48, edge 0.46, and highlight 0.32. Those values are a balanced starting point. They are not the package default.
+`LiquidGlassMaterial.refractive` uses the regular variant with refraction 0.58, edge 0.52, and highlight 0.36. Those values are a balanced starting point. They are not the package default.
 
 `enhanced` is still a blur. It adds a theme-driven veil and a soft capsule highlight. It does not read the pixels behind the bar.
 
-`refractive` does read them, on Impeller only. The shader bends backdrop samples inward from the rounded rim and mixes a light luminance veil into the fill. The sample stays inside the clipped backdrop, because a sample past that edge is empty. The center of the glass barely moves. It does not recolor icons or labels, and it is not Apple's Liquid Glass. A high blur sigma softens the displacement because the sampled texture is already blurred. If the backend cannot build an image-filter shader, or the shader fails to load, the bar paints `enhanced`. Flutter does not expose a reduced-transparency flag. High contrast makes the enhanced and refractive fills more opaque. Classic is unchanged.
+`refractive` does read them, on Impeller only. The shader samples the backdrop first, then a light soften (at most 1.2) runs after that sample. The full blur sigma is not applied before the bend, because that was removing the detail. Samples move outward along the rounded-edge normal and are clamped inside the clipped backdrop. A sample past that edge is empty, not the page outside the bar. The center of the glass barely moves. It does not recolor icons or labels, and it is not Apple's Liquid Glass. If the backend cannot build an image-filter shader, or the shader fails to load, the bar paints `enhanced` and a debug build prints that fallback once. Flutter does not expose a reduced-transparency flag. High contrast makes the enhanced and refractive fills more opaque. Classic is unchanged and still uses its own blur.
 
 ## Scroll collapse
 

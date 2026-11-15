@@ -7,7 +7,7 @@ import 'package:liquid_glass_bottom_navigator_example/main.dart';
 
 void main() {
   test('fractional slider values are not rounded to zero', () {
-    expect(formatGallerySliderValue(0.48), '0.48');
+    expect(formatGallerySliderValue(0.58), '0.58');
     expect(formatGallerySliderValue(0.35), '0.35');
     expect(formatGallerySliderValue(0), '0.00');
     expect(formatGallerySliderValue(58), '58');
@@ -64,9 +64,9 @@ void main() {
       expect(_bar(tester).currentIndex, 0);
       expect(_bar(tester).enableScrollCollapse, isTrue);
       expect(_bar(tester).material.mode, LiquidGlassRenderMode.refractive);
-      expect(_bar(tester).material.refractionStrength, 0.48);
-      expect(_bar(tester).material.edgeThickness, 0.46);
-      expect(_bar(tester).material.highlightIntensity, 0.32);
+      expect(_bar(tester).material.refractionStrength, 0.58);
+      expect(_bar(tester).material.edgeThickness, 0.52);
+      expect(_bar(tester).material.highlightIntensity, 0.36);
       expect(_bar(tester).style.blurSigma, 8);
 
       final reveal = await tester.startGesture(
@@ -219,9 +219,9 @@ void main() {
     );
 
     await reveal('Refraction');
-    expect(find.text('0.48'), findsWidgets);
-    expect(find.text('0.46'), findsWidgets);
-    expect(find.text('0.32'), findsWidgets);
+    expect(find.text('0.58'), findsWidgets);
+    expect(find.text('0.52'), findsWidgets);
+    expect(find.text('0.36'), findsWidgets);
     expect(find.text('0'), findsNothing);
 
     await reveal('Equal slots');

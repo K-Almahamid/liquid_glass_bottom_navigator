@@ -184,7 +184,8 @@ Color glassFillTint(
     alpha *= 0.82;
   }
   if (shaderActive) {
-    alpha *= 0.3;
+    // The shader already carries the backdrop. A heavy tint here hides it.
+    alpha *= material.variant == LiquidGlassMaterialVariant.clear ? 0.08 : 0.16;
   }
   if (highContrast) {
     alpha = math.max(alpha, 0.9);

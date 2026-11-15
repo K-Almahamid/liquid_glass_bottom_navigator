@@ -1,5 +1,7 @@
+import 'dart:math' as math;
 import 'dart:ui' as ui;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
 import 'material.dart';
@@ -57,7 +59,7 @@ class RefractiveGlassFilter extends StatefulWidget {
   /// Requested refractive settings.
   final LiquidGlassMaterial material;
 
-  /// Blur sigma composed under the shader.
+  /// Blur sigma. Refractive uses only a small soften after the shader.
   final LiquidGlassNavigationStyle style;
 
   /// Tint mixed inside the shader.
@@ -117,10 +119,24 @@ class RefractiveGlassFilter extends StatefulWidget {
   State<RefractiveGlassFilter> createState() => _RefractiveGlassFilterState();
 }
 
+/// How much blur is applied after the refractive shader.
+///
+/// The full [blurSigma] is not applied first. Doing that removes the detail
+/// the lens is meant to bend. A small soften after the shader only hides
+/// aliasing. Classic glass does not use this function.
+@visibleForTesting
+double refractiveSoftenSigma(double blurSigma) {
+  if (blurSigma <= 0) {
+    return 0;
+  }
+  return math.min(blurSigma * 0.08, 1.2);
+}
+
 class _RefractiveGlassFilterState extends State<RefractiveGlassFilter> {
   ui.FragmentShader? _shader;
   ui.ImageFilter? _cached;
   String? _cacheKey;
+  static bool _reported = false;
 
   @override
   void initState() {
@@ -148,6 +164,19 @@ class _RefractiveGlassFilterState extends State<RefractiveGlassFilter> {
   ui.ImageFilter? _filter() {
     final program = RefractiveGlassFilter.program;
     if (!ui.ImageFilter.isShaderFilterSupported || program == null) {
+      // The first frame runs before the asset load finishes. Only report
+      // a fallback after that load has actually failed.
+      final failed =
+          !ui.ImageFilter.isShaderFilterSupported ||
+          RefractiveGlassFilter.loadError != null;
+      if (failed && !_reported && !kReleaseMode) {
+        _reported = true;
+        debugPrint(
+          'Liquid glass refractive fallback. '
+          'shaderFilter=${ui.ImageFilter.isShaderFilterSupported} '
+          'error=${RefractiveGlassFilter.loadError}',
+        );
+      }
       return null;
     }
     final dpr = MediaQuery.devicePixelRatioOf(context);
@@ -190,17 +219,29 @@ class _RefractiveGlassFilterState extends State<RefractiveGlassFilter> {
     try {
       filtered = ui.ImageFilter.shader(shader);
     } catch (error) {
-      debugPrint('Liquid glass shader filter unsupported: $error');
+      debugPrint('Liquid glass refractive fallback: $error');
       _shader?.dispose();
       _shader = null;
       return null;
     }
-    final sigma = widget.style.blurSigma;
-    final filter = sigma <= 0
+    if (!_reported && !kReleaseMode) {
+      _reported = true;
+      debugPrint(
+        'Liquid glass refractive shader active. '
+        'refraction=${material.refractionStrength} '
+        'edge=${material.edgeThickness} '
+        'highlight=${material.highlightIntensity} '
+        'variant=${material.variant.name}',
+      );
+    }
+    // Shader first, then a light soften. Blur-then-shader was washing out
+    // the bend. Classic still blurs on its own path.
+    final soften = refractiveSoftenSigma(widget.style.blurSigma);
+    final filter = soften < 0.2
         ? filtered
         : ui.ImageFilter.compose(
-            outer: filtered,
-            inner: ui.ImageFilter.blur(sigmaX: sigma, sigmaY: sigma),
+            outer: ui.ImageFilter.blur(sigmaX: soften, sigmaY: soften),
+            inner: filtered,
           );
     _cacheKey = key;
     _cached = filter;

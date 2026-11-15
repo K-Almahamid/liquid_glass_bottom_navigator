@@ -71,7 +71,7 @@ class _LiquidGlassExampleAppState extends State<LiquidGlassExampleApp> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _captureAutoHideTour();
       });
-    } else if (_glassCapture == 'tour') {
+    } else if (_glassCapture == 'tour' || _glassCapture == 'pair') {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _captureGlassTour();
       });
@@ -244,6 +244,25 @@ class _LiquidGlassExampleAppState extends State<LiquidGlassExampleApp> {
       debugPrint('CAPTURE $name');
       await Future<void>.delayed(const Duration(milliseconds: 1800));
     }
+    if (_glassCapture == 'pair') {
+      await still(
+        'glass-refractive-pattern',
+        const ExampleControls(
+          glassMode: LiquidGlassRenderMode.refractive,
+          backdrop: pattern,
+        ),
+      );
+      await still(
+        'glass-refractive-clear',
+        const ExampleControls(
+          glassMode: LiquidGlassRenderMode.refractive,
+          glassVariant: LiquidGlassMaterialVariant.clear,
+          backdrop: pattern,
+        ),
+      );
+      debugPrint('CAPTURE glass-done');
+      return;
+    }
 
     await still(
       'glass-classic-page',
@@ -324,6 +343,24 @@ class _LiquidGlassExampleAppState extends State<LiquidGlassExampleApp> {
         backdrop: GalleryBackdrop.page,
       ),
     );
+    await still(
+      'glass-refractive-color',
+      const ExampleControls(
+        glassMode: LiquidGlassRenderMode.refractive,
+        backdrop: GalleryBackdrop.saturated,
+      ),
+    );
+    setState(() {
+      _controls = const ExampleControls(
+        glassMode: LiquidGlassRenderMode.refractive,
+        backdrop: pattern,
+      );
+    });
+    _collapse.collapse();
+    await Future<void>.delayed(const Duration(milliseconds: 700));
+    debugPrint('CAPTURE glass-refractive-compact');
+    await Future<void>.delayed(const Duration(milliseconds: 1800));
+    _collapse.expand();
     debugPrint('CAPTURE glass-done');
   }
 
@@ -504,6 +541,16 @@ class _GalleryShell extends StatelessWidget {
               ),
             ),
           ),
+          if (controls.backdrop != GalleryBackdrop.page)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              height: inset,
+              child: IgnorePointer(
+                child: _GalleryBackdrop(kind: controls.backdrop),
+              ),
+            ),
           Positioned(
             left: 0,
             right: 0,
@@ -612,6 +659,15 @@ class _PatternPainter extends CustomPainter {
       Offset.zero & size,
       Paint()..color = const Color(0xFFE7EEEA),
     );
+    final stripe = Paint()
+      ..color = const Color(0xFF1F4D45)
+      ..strokeWidth = 2;
+    for (var x = 0.0; x < size.width; x += 18) {
+      canvas.drawLine(Offset(x, 0), Offset(x, size.height), stripe);
+    }
+    for (var y = 0.0; y < size.height; y += 18) {
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), stripe);
+    }
     final paint = Paint()..color = const Color(0xFF2F6F62);
     for (var i = 0; i < 8; i++) {
       canvas.drawCircle(
