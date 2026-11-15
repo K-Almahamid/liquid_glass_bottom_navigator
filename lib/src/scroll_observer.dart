@@ -144,6 +144,47 @@ class _LiquidGlassScrollObserverState extends State<LiquidGlassScrollObserver> {
   double _accumulated = 0;
   bool? _down;
 
+  /// Set when the bar is expanded while a drag or fling is still moving.
+  ///
+  /// The distance that already requested collapse would undo that expand on
+  /// the next update. A new finger drag clears it. Direction detection is
+  /// unchanged.
+  bool _holdExpand = false;
+  bool _owningRequest = false;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.addListener(_onTarget);
+  }
+
+  @override
+  void didUpdateWidget(LiquidGlassScrollObserver oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!identical(oldWidget.controller, widget.controller)) {
+      oldWidget.controller.removeListener(_onTarget);
+      widget.controller.addListener(_onTarget);
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_onTarget);
+    super.dispose();
+  }
+
+  void _onTarget() {
+    if (_owningRequest || widget.controller.isCollapsed) {
+      return;
+    }
+    if (_phase != _ScrollPhase.drag && _phase != _ScrollPhase.ballistic) {
+      return;
+    }
+    _holdExpand = true;
+    _accumulated = 0;
+    _publish();
+  }
+
   bool _onNotification(ScrollNotification notification) {
     if (!widget.enabled) {
       return false;
@@ -166,6 +207,7 @@ class _LiquidGlassScrollObserverState extends State<LiquidGlassScrollObserver> {
       _setPhase(_ScrollPhase.idle, 'end');
       _accumulated = 0;
       _down = null;
+      _holdExpand = false;
       _publish();
     }
     return false;
@@ -176,6 +218,7 @@ class _LiquidGlassScrollObserverState extends State<LiquidGlassScrollObserver> {
       _setPhase(_ScrollPhase.drag, 'start drag');
       _accumulated = 0;
       _down = null;
+      _holdExpand = false;
       _publish();
       return;
     }
@@ -297,12 +340,18 @@ class _LiquidGlassScrollObserverState extends State<LiquidGlassScrollObserver> {
   }
 
   void _requestCollapse(String reason) {
+    if (_holdExpand) {
+      _ignore('held expand');
+      return;
+    }
     if (widget.controller.isCollapsed) {
       return;
     }
     widget.trace?.requests++;
     _note('collapse $reason');
+    _owningRequest = true;
     widget.controller.collapse();
+    _owningRequest = false;
   }
 
   void _requestExpand(String reason) {
@@ -314,7 +363,9 @@ class _LiquidGlassScrollObserverState extends State<LiquidGlassScrollObserver> {
     }
     widget.trace?.requests++;
     _note('expand $reason');
+    _owningRequest = true;
     widget.controller.expand();
+    _owningRequest = false;
     _accumulated = 0;
     _down = false;
     _publish();

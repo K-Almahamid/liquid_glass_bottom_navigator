@@ -88,11 +88,12 @@ class LiquidGlassMaterial {
   ///
   /// Used by [LiquidGlassRenderMode.refractive]. The center of the glass
   /// stays nearly still. 0 disables the shift. The filter is clipped to the
-  /// glass shape, and the shader reads only that backdrop. One sample moves
-  /// a few pixels along the rim normal. A tight blur around that same point
-  /// softens the interior and keeps the page color. Clear reaches a little
-  /// farther and stays more transparent than regular. The full blur sigma
-  /// is not applied first.
+  /// glass shape, and the shader reads only that backdrop. One sample is
+  /// pulled inward along the rim, so nearby detail compresses into the
+  /// edge. It does not read a second copy. A tight blur around that same
+  /// point softens the interior and keeps the page color. Clear reaches a
+  /// little farther and stays more transparent than regular. The full blur
+  /// sigma is not applied first.
   final double refractionStrength;
 
   /// How wide the curved edge band is, from 0 to 1.

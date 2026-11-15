@@ -420,7 +420,9 @@ class RenderCollapseMorph extends RenderProxyBox {
       return false;
     }
     final visual = _visual(size);
-    if (!visual.contains(position)) {
+    // Corners of the bounding box are outside the rounded glass. They must
+    // not become a hit target while the bar is moving or compact.
+    if (!_radius(visual).toRRect(visual).contains(position)) {
       return false;
     }
     if (_t <= 0) {

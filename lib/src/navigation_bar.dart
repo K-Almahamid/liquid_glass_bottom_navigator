@@ -821,6 +821,11 @@ class _LiquidGlassNavigationBarState extends State<LiquidGlassNavigationBar>
         behavior: HitTestBehavior.deferToChild,
         excludeFromSemantics: true,
         onTap: () {
+          // A destination drag owns the pointer. Collapse is deferred until
+          // that drag ends, so this tap must not expand over it.
+          if (_dragging) {
+            return;
+          }
           if ((_visibility?.value ?? 0) <= 0) {
             return;
           }

@@ -67,16 +67,20 @@ void main() {
   float clear = step(0.5, u_variant);
   float edge = clamp(u_edge, 0.0, 1.0);
   float refraction = clamp(u_refraction, 0.0, 1.0);
-  // The bend peaks inside the rim and returns to zero on the contour, so
-  // the sample does not stick to the border texel. One image, no second copy.
-  float band = mix(short_side * 0.16, short_side * 0.32, edge);
-  float edge_weight = smoothstep(-band, -1.0, dist);
+  // Narrow band. The shift is strongest on the contour and falls inward.
+  // Sampling against the outward normal pulls detail into the rim. The
+  // peak is capped so the map cannot reverse and repeat a glyph. The
+  // texture has no pixels outside the glass, so this cannot bend content
+  // that has not entered the shape.
+  float band = short_side * mix(0.14, 0.26, edge);
+  float edge_weight = smoothstep(-band, -1.5, dist);
   float depth = clamp(-dist / max(band, 1.0), 0.0, 1.0);
-  float lens = sin(depth * 3.14159265);
-  float shift = lens * refraction * mix(12.0, 22.0, edge) * mix(1.0, 1.28, clear);
-  shift = min(shift, max(-dist - 1.5, 0.0));
+  float lens = pow(1.0 - depth, 1.4);
+  float peak = refraction * mix(32.0, 56.0, edge) * mix(1.0, 1.12, clear);
+  peak = min(peak, band * 0.60);
+  float shift = lens * peak;
   vec2 limit = u_size - vec2(1.0);
-  vec2 bent_px = clamp(pixel + normal * shift, vec2(1.0), limit);
+  vec2 bent_px = clamp(pixel - normal * shift, vec2(1.0), limit);
 
   // Five taps on the same point. Wide enough to soften a line of type,
   // close enough that the taps cannot form a second copy of a word.
@@ -104,11 +108,13 @@ void main() {
   } else {
     light = vec2(-0.15, -1.0);
   }
-  float incidence = clamp(dot(normal, light), 0.0, 1.0);
-  float fresnel = pow(max(edge_weight, 0.0), 1.55);
+  float facing = clamp(dot(normal, light), 0.0, 1.0);
+  float away = clamp(-dot(normal, light), 0.0, 1.0);
+  float fresnel = pow(max(edge_weight, 0.0), 1.2);
   float highlight = clamp(u_highlight, 0.0, 1.0);
-  float spec = pow(incidence, 22.0) * fresnel * highlight * mix(0.34, 0.16, clear);
-  spec += clamp(normal.y, 0.0, 1.0) * fresnel * highlight * mix(0.12, 0.06, clear);
+  // Upper rim is the brighter catch. The lower rim is the same curve, dimmer.
+  float spec = pow(facing, 3.0) * fresnel * highlight * mix(0.22, 0.10, clear);
+  spec += pow(away, 5.0) * fresnel * highlight * mix(0.08, 0.04, clear);
   color = clamp(color + vec3(spec), 0.0, 1.0);
   frag_color = vec4(color, 1.0);
 }
