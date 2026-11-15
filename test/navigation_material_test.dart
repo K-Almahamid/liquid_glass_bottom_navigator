@@ -53,6 +53,22 @@ void main() {
       highContrast: false,
     );
     expect(clear.a, lessThan(regular.a));
+    final refractiveRegular = glassFillTint(
+      const LiquidGlassMaterial(mode: LiquidGlassRenderMode.refractive),
+      tint,
+      shaderActive: true,
+      highContrast: false,
+    );
+    final refractiveClear = glassFillTint(
+      const LiquidGlassMaterial(
+        mode: LiquidGlassRenderMode.refractive,
+        variant: LiquidGlassMaterialVariant.clear,
+      ),
+      tint,
+      shaderActive: true,
+      highContrast: false,
+    );
+    expect(refractiveClear.a, lessThan(refractiveRegular.a * 0.5));
     expect(
       glassFillTint(
         const LiquidGlassMaterial(),

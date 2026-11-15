@@ -71,7 +71,10 @@ class _LiquidGlassExampleAppState extends State<LiquidGlassExampleApp> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _captureAutoHideTour();
       });
-    } else if (_glassCapture == 'tour' || _glassCapture == 'pair') {
+    } else if (_glassCapture == 'tour' ||
+        _glassCapture == 'pair' ||
+        _glassCapture == 'audit' ||
+        _glassCapture == 'mid') {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _captureGlassTour();
       });
@@ -244,6 +247,7 @@ class _LiquidGlassExampleAppState extends State<LiquidGlassExampleApp> {
       debugPrint('CAPTURE $name');
       await Future<void>.delayed(const Duration(milliseconds: 1800));
     }
+
     if (_glassCapture == 'pair') {
       await still(
         'glass-refractive-pattern',
@@ -260,6 +264,117 @@ class _LiquidGlassExampleAppState extends State<LiquidGlassExampleApp> {
           backdrop: pattern,
         ),
       );
+      debugPrint('CAPTURE glass-done');
+      return;
+    }
+    if (_glassCapture == 'mid' || _glassCapture == 'audit') {
+      if (_glassCapture == 'mid') {
+        setState(() {
+          _controls = const ExampleControls(
+            glassMode: LiquidGlassRenderMode.refractive,
+            backdrop: pattern,
+          );
+        });
+        timeDilation = 10;
+        _collapse.collapse();
+        await Future<void>.delayed(const Duration(milliseconds: 2200));
+        debugPrint('CAPTURE audit-mid');
+        await Future<void>.delayed(const Duration(milliseconds: 1600));
+        timeDilation = 1;
+        await Future<void>.delayed(const Duration(milliseconds: 500));
+        debugPrint('CAPTURE audit-compact');
+        await Future<void>.delayed(const Duration(milliseconds: 1600));
+        debugPrint('CAPTURE glass-done');
+        return;
+      }
+      await still(
+        'audit-classic',
+        const ExampleControls(
+          glassMode: LiquidGlassRenderMode.classic,
+          backdrop: pattern,
+        ),
+      );
+      await still(
+        'audit-enhanced',
+        const ExampleControls(
+          glassMode: LiquidGlassRenderMode.enhanced,
+          backdrop: pattern,
+        ),
+      );
+      await still(
+        'audit-balanced',
+        const ExampleControls(
+          glassMode: LiquidGlassRenderMode.refractive,
+          backdrop: pattern,
+        ),
+      );
+      await still(
+        'audit-clearer',
+        const ExampleControls(
+          glassMode: LiquidGlassRenderMode.refractive,
+          refractionStrength: 0.42,
+          edgeThickness: 0.38,
+          highlightIntensity: 0.24,
+          backdrop: pattern,
+        ),
+      );
+      await still(
+        'audit-pronounced',
+        const ExampleControls(
+          glassMode: LiquidGlassRenderMode.refractive,
+          refractionStrength: 0.72,
+          edgeThickness: 0.64,
+          highlightIntensity: 0.44,
+          backdrop: pattern,
+        ),
+      );
+      await still(
+        'audit-clear',
+        const ExampleControls(
+          glassMode: LiquidGlassRenderMode.refractive,
+          glassVariant: LiquidGlassMaterialVariant.clear,
+          backdrop: pattern,
+        ),
+      );
+      await still(
+        'audit-gradient',
+        const ExampleControls(
+          glassMode: LiquidGlassRenderMode.refractive,
+          backdrop: GalleryBackdrop.gradient,
+        ),
+      );
+      await still(
+        'audit-page',
+        const ExampleControls(
+          glassMode: LiquidGlassRenderMode.refractive,
+          backdrop: GalleryBackdrop.page,
+        ),
+      );
+      await still(
+        'audit-dark',
+        const ExampleControls(
+          themeMode: ThemeMode.dark,
+          glassMode: LiquidGlassRenderMode.refractive,
+          backdrop: GalleryBackdrop.page,
+        ),
+      );
+      setState(() {
+        _controls = const ExampleControls(
+          glassMode: LiquidGlassRenderMode.refractive,
+          backdrop: pattern,
+        );
+      });
+      timeDilation = 10;
+      _collapse.collapse();
+      // Wall clock. timeDilation slows the 420ms morph, so this lands near halfway.
+      await Future<void>.delayed(const Duration(milliseconds: 2200));
+      debugPrint('CAPTURE audit-mid');
+      await Future<void>.delayed(const Duration(milliseconds: 1600));
+      timeDilation = 1;
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+      debugPrint('CAPTURE audit-compact');
+      await Future<void>.delayed(const Duration(milliseconds: 1600));
+      _collapse.expand();
       debugPrint('CAPTURE glass-done');
       return;
     }

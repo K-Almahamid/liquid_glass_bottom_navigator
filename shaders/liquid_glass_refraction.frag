@@ -62,9 +62,15 @@ void main() {
   float short_side = max(min(u_size.x, u_size.y), 1.0);
   // Outward bend. The backdrop texture is only this clipped rect, so the
   // sample is clamped inside it. A sample past the edge is empty, not page.
+  // Clear reaches farther. Regular stays shorter so the center stays readable.
+  float clear = step(0.5, u_variant);
   float band = mix(short_side * 0.16, short_side * 0.48, clamp(u_edge, 0.0, 1.0));
   float edge_weight = smoothstep(-band, -1.0, dist);
-  float shift = clamp(u_refraction, 0.0, 1.0) * short_side * 0.26 * edge_weight;
+  float reach = mix(0.20, 0.36, clear);
+  float shift = min(
+    short_side * 0.22,
+    clamp(u_refraction, 0.0, 1.0) * short_side * reach * edge_weight
+  );
   vec2 sample_pixel = clamp(pixel + normal * shift, vec2(1.0), u_size - vec2(1.0));
   vec2 sample_uv = sample_pixel / u_size;
   vec2 raw_uv = clamp(uv, vec2(0.001), vec2(0.999));
@@ -81,10 +87,8 @@ void main() {
   vec3 linear = linear_from_srgb(encoded);
   float luminance = dot(linear, vec3(0.2126, 0.7152, 0.0722));
   float response = smoothstep(0.05, 0.9, luminance);
-  float clear = step(0.5, u_variant);
-  // Regular keeps a light veil so labels stay readable. Clear stays closer
-  // to the sampled backdrop.
-  float veil = mix(0.2, 0.0, clear);
+  // Regular holds a veil so labels stay readable. Clear does not.
+  float veil = mix(0.30, 0.0, clear);
 
   vec3 color = encoded;
   if (u_adaptive < 0.5) {
@@ -103,8 +107,9 @@ void main() {
     light = vec2(-0.15, -1.0);
   }
   float incidence = clamp(dot(normal, light), 0.0, 1.0);
-  float fresnel = pow(clamp(edge_weight, 0.0, 1.0), 1.6);
-  float spec = pow(incidence, 28.0) * fresnel * clamp(u_highlight, 0.0, 1.0) * 0.35;
+  float fresnel = pow(clamp(edge_weight, 0.0, 1.0), 1.8);
+  float spec = pow(incidence, 32.0) * fresnel *
+      clamp(u_highlight, 0.0, 1.0) * mix(0.28, 0.14, clear);
   color = clamp(color + vec3(spec), 0.0, 1.0);
 
   frag_color = vec4(color, 1.0);

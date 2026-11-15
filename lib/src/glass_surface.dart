@@ -184,8 +184,9 @@ Color glassFillTint(
     alpha *= 0.82;
   }
   if (shaderActive) {
-    // The shader already carries the backdrop. A heavy tint here hides it.
-    alpha *= material.variant == LiquidGlassMaterialVariant.clear ? 0.08 : 0.16;
+    // The shader already carries the backdrop. Regular keeps a light wash.
+    // Clear leaves almost all of the sampled color.
+    alpha *= material.variant == LiquidGlassMaterialVariant.clear ? 0.05 : 0.42;
   }
   if (highContrast) {
     alpha = math.max(alpha, 0.9);
