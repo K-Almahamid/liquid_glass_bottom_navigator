@@ -87,10 +87,11 @@ class LiquidGlassMaterial {
   /// How far edge samples move, from 0 to 1.
   ///
   /// Used by [LiquidGlassRenderMode.refractive]. The center of the glass
-  /// stays nearly still. 0 disables the shift. The rim samples outward into
-  /// a margin of the real backdrop, then the margin is discarded. Clear
-  /// reaches farther and stays more transparent than regular. The interior
-  /// is diffused in the shader. The full blur sigma is not applied first.
+  /// stays nearly still. 0 disables the shift. The filter is clipped to the
+  /// glass shape, and the shader reads only that backdrop. One sample moves
+  /// a few pixels along the rim normal. A tight blur around that same point
+  /// softens the interior. Clear reaches a little farther and stays more
+  /// transparent than regular. The full blur sigma is not applied first.
   final double refractionStrength;
 
   /// How wide the curved edge band is, from 0 to 1.

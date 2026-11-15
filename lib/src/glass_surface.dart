@@ -1,10 +1,8 @@
 import 'dart:math' as math;
 import 'dart:ui';
 
-import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 
-import 'glass_shader.dart';
 import 'material.dart';
 import 'style.dart';
 import 'theme.dart';
@@ -78,16 +76,6 @@ class GlassSurface extends StatelessWidget {
                 sigmaX: style.blurSigma,
                 sigmaY: style.blurSigma,
               ));
-    if (shader != null) {
-      return DecoratedBox(
-        decoration: _shadow(),
-        child: _LensBackdrop(
-          filter: shader,
-          borderRadius: borderRadius,
-          child: blurredChild,
-        ),
-      );
-    }
     return DecoratedBox(
       decoration: _shadow(),
       child: ClipRRect(
@@ -292,101 +280,5 @@ class GlassRimPainter extends CustomPainter {
     return oldDelegate.borderRadius != borderRadius ||
         oldDelegate.color != color ||
         oldDelegate.width != width;
-  }
-}
-
-/// Refractive backdrop that samples a margin outside the painted glass.
-///
-/// The child is clipped to the glass. The filter layer is larger so the
-/// shader can read page pixels above and below the bar. Those extra pixels
-/// are discarded by the shader.
-class _LensBackdrop extends SingleChildRenderObjectWidget {
-  const _LensBackdrop({
-    required this.filter,
-    required this.borderRadius,
-    required super.child,
-  });
-
-  final ImageFilter filter;
-  final BorderRadius borderRadius;
-
-  @override
-  RenderObject createRenderObject(BuildContext context) {
-    return _RenderLensBackdrop(filter: filter, borderRadius: borderRadius);
-  }
-
-  @override
-  void updateRenderObject(
-    BuildContext context,
-    _RenderLensBackdrop renderObject,
-  ) {
-    renderObject
-      ..filter = filter
-      ..borderRadius = borderRadius;
-  }
-}
-
-class _RenderLensBackdrop extends RenderProxyBox {
-  _RenderLensBackdrop({required this._filter, required this._borderRadius});
-
-  ImageFilter _filter;
-  BorderRadius _borderRadius;
-
-  set filter(ImageFilter value) {
-    if (_filter == value) {
-      return;
-    }
-    _filter = value;
-    markNeedsPaint();
-  }
-
-  set borderRadius(BorderRadius value) {
-    if (_borderRadius == value) {
-      return;
-    }
-    _borderRadius = value;
-    markNeedsPaint();
-  }
-
-  @override
-  bool get alwaysNeedsCompositing => true;
-
-  @override
-  void paint(PaintingContext context, Offset offset) {
-    final child = this.child;
-    if (child == null) {
-      return;
-    }
-    final pad = refractiveLensMargin;
-    final expanded = Rect.fromLTWH(
-      -pad,
-      -pad,
-      size.width + pad * 2,
-      size.height + pad * 2,
-    );
-    final local = Offset.zero & size;
-    context.pushClipRect(needsCompositing, offset, expanded, (
-      PaintingContext context,
-      Offset offset,
-    ) {
-      context.pushLayer(BackdropFilterLayer(filter: _filter), (
-        PaintingContext context,
-        Offset offset,
-      ) {
-        context.canvas.drawRect(
-          offset & expanded.size,
-          Paint()..color = const Color(0x00000000),
-        );
-        context.pushClipRRect(
-          needsCompositing,
-          offset + Offset(pad, pad),
-          local,
-          _borderRadius.toRRect(local),
-          (PaintingContext context, Offset offset) {
-            context.paintChild(child, offset);
-          },
-        );
-      }, offset);
-    });
   }
 }

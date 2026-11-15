@@ -272,6 +272,22 @@ class _LiquidGlassExampleAppState extends State<LiquidGlassExampleApp> {
           backdrop: pattern,
         ),
       );
+      await still(
+        'glass-classic-dark',
+        const ExampleControls(
+          glassMode: LiquidGlassRenderMode.classic,
+          themeMode: ThemeMode.dark,
+          backdrop: pattern,
+        ),
+      );
+      await still(
+        'glass-refractive-dark',
+        const ExampleControls(
+          glassMode: LiquidGlassRenderMode.refractive,
+          themeMode: ThemeMode.dark,
+          backdrop: pattern,
+        ),
+      );
       await still('glass-refractive-page', const ExampleControls());
       setState(() {
         _controls = const ExampleControls(

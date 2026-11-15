@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
@@ -27,7 +28,6 @@ void main() {
     expect(LiquidGlassMaterial.refractive.highlightIntensity, 0.36);
     expect(refractiveSoftenSigma(0), 0);
     expect(refractiveSoftenSigma(18), 0);
-    expect(refractiveLensMargin, greaterThan(8));
     expect(LiquidGlassMaterial.refractive, isNot(LiquidGlassMaterial.classic));
     expect(
       () => LiquidGlassMaterial(refractionStrength: 2),
@@ -164,6 +164,13 @@ void main() {
       expect(RefractiveGlassFilter.program, isNotNull);
     },
   );
+
+  test('the refraction shader stays inside one clipped sample', () {
+    final source = File('shaders/liquid_glass_refraction.frag')
+        .readAsStringSync();
+    expect(source.contains('u_inset'), isFalse);
+    expect(source.contains('22.0'), isFalse);
+  });
 
   test('edge normals point out of the rounded glass', () {
     const wide = Size(320, 64);

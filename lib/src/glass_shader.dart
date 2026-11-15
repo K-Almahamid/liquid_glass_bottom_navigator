@@ -119,12 +119,6 @@ class RefractiveGlassFilter extends StatefulWidget {
   State<RefractiveGlassFilter> createState() => _RefractiveGlassFilterState();
 }
 
-/// Logical pixels of backdrop kept around the painted glass.
-///
-/// The shader reads this margin and discards it, so the bar's layout size
-/// does not change. Classic glass does not use it.
-const double refractiveLensMargin = 18;
-
 /// Outward normal of a rounded rectangle.
 ///
 /// Y grows downward, so the top edge is `(0, -1)` and the bottom edge is
@@ -226,7 +220,7 @@ class _RefractiveGlassFilterState extends State<RefractiveGlassFilter> {
         '${material.refractionStrength}:${material.edgeThickness}:'
         '${material.highlightIntensity}:${material.variant}:'
         '${material.adaptiveTint}:${tint.r},${tint.g},${tint.b},${tint.a}:'
-        '${widget.style.blurSigma}:$dpr:$refractiveLensMargin';
+        '${widget.style.blurSigma}:$dpr';
     if (_cached != null && _cacheKey == key) {
       return _cached;
     }
@@ -251,8 +245,7 @@ class _RefractiveGlassFilterState extends State<RefractiveGlassFilter> {
       )
       ..setFloat(14, material.adaptiveTint ? 1 : 0)
       ..setFloat(15, 0.2)
-      ..setFloat(16, -1)
-      ..setFloat(17, refractiveLensMargin * dpr);
+      ..setFloat(16, -1);
     final ui.ImageFilter filtered;
     try {
       filtered = ui.ImageFilter.shader(shader);
